@@ -26,22 +26,36 @@ The project follows a monolithic package architecture, organized into logical co
 
 ```
 go-fantasy-pl/
-├── client/          # Core HTTP client implementation
-│   ├── client.go    # Main client struct and configuration
-│   └── rate.go      # Rate limiting implementation
-├── models/          # Data structures for API responses
-│   ├── player.go    # Player-related structs
-│   ├── team.go      # Team-related structs
-│   └── gameweek.go  # Gameweek-related structs
-├── endpoints/       # API endpoint implementations
-│   ├── bootstrap.go # General game data
-│   ├── fixtures.go  # Match fixtures
-│   └── leagues.go   # League standings
-├── utils/          # Helper functions
-│   ├── cache.go    # Caching implementation
-│   └── helpers.go  # General utility functions
-└── examples/       # Usage examples
-    └── basic.go    # Basic usage patterns
+├── .github/             # GitHub-specific configurations
+│   └── workflows/       # GitHub Actions workflows
+│       └── ci.yml       # Continuous Integration workflow
+├── client/              # Core HTTP client implementation
+│   ├── client.go        # Main client struct and configuration
+│   ├── client_test.go   # Tests for client functionality
+│   ├── options.go       # Configuration options for the client
+│   └── rate_limiter.go  # Rate limiting implementation
+├── models/              # Data structures for API responses
+│   ├── player.go        # Player-related structs
+│   ├── team.go          # Team-related structs
+│   ├── gameweek.go      # Gameweek-related structs
+│   ├── fixture.go       # Fixture-related structs
+│   └── league.go        # League-related structs
+├── endpoints/           # API endpoint implementations
+│   ├── bootstrap.go     # General game data
+│   ├── players.go       # Player-related endpoints
+│   ├── teams.go         # Team-related endpoints
+│   ├── fixtures.go      # Match fixtures
+│   └── leagues.go       # League standings
+├── internal/            # Internal packages
+│   └── cache/           # Caching functionality
+│       └── cache.go     # Implementation of caching mechanism
+├── examples/            # Usage examples
+│   └── basic/
+│       └── main.go      # Basic usage examples
+├── .gitignore           # Ignored files and directories
+├── LICENSE              # License for the project
+├── README.md            # Project documentation
+└── go.mod               # Go module configuration
 ```
 
 ## Main Components
