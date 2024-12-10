@@ -19,7 +19,8 @@ type Client struct {
 	rateLimit  *rateLimiter
 
 	// services
-	Players *endpoints.PlayerService
+	Players  *endpoints.PlayerService
+	Fixtures *endpoints.FixtureService
 }
 
 func NewClient(opts ...Option) *Client {
@@ -39,13 +40,14 @@ func NewClient(opts ...Option) *Client {
 		rateLimit: newRateLimiter(50, time.Minute),
 	}
 
-	// Apply options
 	for _, opt := range opts {
 		opt(c)
 	}
 
-	// Initialize services
+	// services
+
 	c.Players = endpoints.NewPlayerService(c)
+	c.Fixtures = endpoints.NewFixtureService(c)
 
 	return c
 }

@@ -10,7 +10,7 @@ import (
 
 var playerID int
 
-func setupTestService() *endpoints.PlayerService {
+func setupPlayersTestService() *endpoints.PlayerService {
 	c := client.NewClient()
 	playerID = 328 // Example player ID for Mohamed Salah
 
@@ -18,7 +18,7 @@ func setupTestService() *endpoints.PlayerService {
 }
 
 func TestGetAllPlayers(t *testing.T) {
-	ps := setupTestService()
+	ps := setupPlayersTestService()
 	players, err := ps.GetAllPlayers()
 
 	assert.NoError(t, err, "expected no error when getting all players")
@@ -39,7 +39,7 @@ func TestGetAllPlayers(t *testing.T) {
 }
 
 func TestGetPlayer(t *testing.T) {
-	ps := setupTestService()
+	ps := setupPlayersTestService()
 
 	player, err := ps.GetPlayer(playerID)
 
@@ -57,7 +57,7 @@ func TestGetPlayer(t *testing.T) {
 }
 
 func TestGetPlayerHistory(t *testing.T) {
-	ps := setupTestService()
+	ps := setupPlayersTestService()
 
 	history, err := ps.GetPlayerHistory(playerID)
 

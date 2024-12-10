@@ -8,18 +8,14 @@ import (
 )
 
 func main() {
-	// Initialize client
 	c := client.NewClient()
 	playerID := 328 // Salah's ID
 
-	// Get player details first
 	fmt.Printf("Getting player details for ID %d...\n", playerID)
 	player, err := c.Players.GetPlayer(playerID)
 	if err != nil {
 		log.Printf("Warning: Could not get player details: %v\n", err)
-		// Continue execution even if player details fail
 	} else {
-		// Print player details only if we got them
 		fmt.Println("----------------------------------------")
 		fmt.Printf("Mo Salah Details:\n")
 		fmt.Printf("Full Name: %s\n", player.GetDisplayName())
