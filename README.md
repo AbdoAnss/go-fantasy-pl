@@ -1,141 +1,137 @@
 # Fantasy Premier League API Wrapper for Go
 
 ## Overview
-This project provides a Go wrapper for the Fantasy Premier League (FPL) API, offering a type-safe and idiomatic way to interact with FPL data. The wrapper focuses on read operations only, as team management operations are restricted to the official FPL application.
+This project provides a Go wrapper for the Fantasy Premier League (FPL) API, offering a type-safe and idiomatic way to interact with FPL data. The wrapper focuses on read operations for essential FPL data.
+
+## Installation
+```bash
+go get github.com/abdoanss/go-fantasy-pl
+```
 
 ## Key Features
 - Type-safe access to FPL data
-- Comprehensive coverage of public API endpoints
 - Rate limiting handling
-- Optional response caching
-- Concurrent request support for batch operations
-- Extensive documentation and examples
+- Response caching
+- Easy-to-use client interface
 
-## Scope
-The wrapper provides access to the following FPL data:
+## Available Data
+The wrapper currently provides access to:
 - Player statistics and information
 - Team data
-- Gameweek details
-- League standings
 - Fixture information
-- Historical performance data
-- General game settings and rules
+- General game settings
 
-## Architecture
-The project follows a monolithic package architecture, organized into logical components:
-
+## Project Structure
 ```
 go-fantasy-pl/
-├── .github/             # GitHub-specific configurations
-│   └── workflows/       # GitHub Actions workflows
-│       └── ci.yml       # Continuous Integration workflow
-├── client/              # Core HTTP client implementation
-│   ├── client.go        # Main client struct and configuration
-│   ├── client_test.go   # Tests for client functionality
-│   ├── options.go       # Configuration options for the client
-│   └── rate_limiter.go  # Rate limiting implementation
-├── models/              # Data structures for API responses
-│   ├── player.go        # Player-related structs
-│   ├── team.go          # Team-related structs
-│   ├── gameweek.go      # Gameweek-related structs
-│   ├── fixture.go       # Fixture-related structs
-│   └── league.go        # League-related structs
-├── endpoints/           # API endpoint implementations
-│   ├── bootstrap.go     # General game data
-│   ├── players.go       # Player-related endpoints
-│   ├── teams.go         # Team-related endpoints
-│   ├── fixtures.go      # Match fixtures
-│   └── leagues.go       # League standings
-├── internal/            # Internal packages
-│   └── cache/           # Caching functionality
-│       └── cache.go     # Implementation of caching mechanism
-├── examples/            # Usage examples
-│   └── basic/
-│       └── main.go      # Basic usage examples
-├── .gitignore           # Ignored files and directories
-├── LICENSE              # License for the project
-├── README.md            # Project documentation
-└── go.mod               # Go module configuration
+├── client/             # Core HTTP client implementation
+│   ├── client.go       # Main client struct and configuration
+│   ├── options.go      # Configuration options for the client
+│   └── rate_limiter.go # Rate limiting implementation
+├── models/             # Data structures for API responses
+│   ├── player.go       # Player-related structs
+│   ├── team.go         # Team-related structs
+│   └── fixture.go      # Fixture-related structs
+├── endpoints/          # API endpoint implementations
+│   ├── bootstrap.go    # General game data
+│   ├── players.go      # Player-related endpoints
+│   ├── teams.go        # Team-related endpoints
+│   └── fixtures.go     # Match fixtures
+├── internal/           # Internal packages
+│   └── cache/          # Caching functionality
+└── examples/           # Usage examples
 ```
 
-## Main Components
+## Quick Start
+```go
+package main
+
+import (
+    "fmt"
+    "github.com/abdoanss/go-fantasy-pl/client"
+)
+
+func main() {
+    // Initialize client
+    fpl := client.NewClient()
+
+    // Get all teams
+    teams, err := fpl.Teams.GetAllTeams()
+    if err != nil {
+        panic(err)
+    }
+
+    // Print team names
+    for _, team := range teams {
+        fmt.Printf("Team: %s\n", team.GetFullName())
+    }
+
+    // Get all players
+    players, err := fpl.Players.GetAllPlayers()
+    if err != nil {
+        panic(err)
+    }
+
+    // Print top 5 players by points
+    fmt.Println("\nTop 5 Players:")
+    for i, player := range players[:5] {
+        fmt.Printf("%d. %s - Points: %d\n", 
+            i+1, player.GetDisplayName(), player.TotalPoints)
+    }
+}
+```
+
+## Features
 
 ### Client
-- Handles HTTP communication with the FPL API
-- Manages rate limiting and request throttling
-- Implements retry logic for failed requests
-- Provides configuration options for timeouts and concurrency
+- Configurable HTTP client
+- Built-in rate limiting
+- Automatic request retries
+- Response caching
 
-### Models
-- Defines Go structs that match FPL API response structures
-- Implements custom JSON unmarshaling where needed
-- Provides helper methods for common data operations
-- Includes validation logic for response data
+### Available Data Types
+- Teams: Full team information and statistics
+- Players: Detailed player data and performance stats
+- Fixtures: Match information and results
+- Game Settings: General FPL game configuration
 
-### Endpoints
-- Implements methods for each supported API endpoint
-- Groups related endpoints into logical packages
-- Handles parameter validation and request formation
-- Returns strongly-typed responses
+### Caching
+The wrapper includes an optional caching system with configurable TTL for:
+- Team data (24 hours)
+- Player data (10 minutes)
+- Fixture data (10 minutes)
+- Game settings (24 hours)
 
-### Utils
-- Provides caching mechanisms to reduce API load
-- Implements helper functions for common operations
-- Handles error wrapping and context management
-
-## Usage Examples
-
-```go
-// Initialize client
-client := fpl.NewClient()
-
-// Get all players
-players, err := client.GetPlayers()
-
-// Get specific gameweek
-gameweek, err := client.GetGameweek(1)
-
-// Get league standings
-league, err := client.GetLeague(123456)
-```
-
-## Error Handling
-The wrapper provides detailed error types for different failure scenarios:
-- API errors (rate limiting, server errors)
-- Validation errors (invalid parameters)
-- Network errors (timeout, connection issues)
-- Parsing errors (invalid response format)
-
-## Rate Limiting
-The wrapper implements automatic rate limiting to prevent exceeding FPL's API limits:
-- Configurable request rates
+### Rate Limiting
+Automatic rate limiting is implemented to prevent exceeding FPL's API limits:
+- Default: 50 requests per minute
+- Configurable through client options
 - Automatic request queuing
-- Backoff strategies for rate limit errors
 
-## Caching
-Optional response caching is available to improve performance:
-- In-memory cache with configurable TTL
-- Cache invalidation on gameweek boundaries
-- Selective caching for specific endpoint responses
+## Examples
+Check the `examples/` directory for complete usage examples, including:
+- Basic data retrieval
+- Fixture analysis
+- Player statistics
+- Team information
 
 ## Contributing
-Contributions are welcome! Please refer to our contributing guidelines for more information.
+Contributions are welcome! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
 
-## Future Considerations
-- Support for additional statistical analysis
-- Enhanced caching strategies
-- Additional convenience methods for common queries
-- Performance optimizations for large data sets
-
-## Limitations
-- No support for team management operations (transfers, captain selection, etc.)
-- Rate limiting may affect real-time data access
-- Some data may be delayed based on FPL API updates
-- Cache invalidation might need manual handling in some cases
+## Error Handling
+The wrapper provides detailed error messages for:
+- API errors
+- Network issues
+- Invalid responses
+- Rate limiting
 
 ## License
 [MIT License](./LICENSE)
 
+## Version
+Current version: v0.1.0
 
-## Versioning
-This project follows semantic versioning. Major version changes may include breaking changes to the API.
+## Limitations
+- Read-only access (no team management operations)
+- Subject to FPL API rate limits
+- Some data may be delayed based on FPL API updates
