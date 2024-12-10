@@ -13,8 +13,9 @@ RUN go mod download
 # Copy the entire project into the container
 COPY . .
 
-# Build the Go app (assuming the entry point is in the api directory)
-RUN go build -o myapp ./api/main.go
+# Build the Go app (only testing with player example)
+RUN go build -o myapp ./examples/players/main.go
+
 
 # Stage 2: Create a minimal image
 FROM alpine:latest
