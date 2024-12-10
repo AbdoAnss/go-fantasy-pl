@@ -32,6 +32,10 @@ func NewFixtureService(client api.Client) *FixtureService {
 	}
 }
 
+// TODO:
+// Centralized Cache with Namespacing:
+// Use a single cache instance and differentiate keys using endpoint-specific prefixes.
+
 var fixturesCache = cache.NewCache()
 
 func init() {

@@ -21,6 +21,7 @@ type Client struct {
 	// services
 	Players  *endpoints.PlayerService
 	Fixtures *endpoints.FixtureService
+	Teams    *endpoints.TeamService
 }
 
 func NewClient(opts ...Option) *Client {
@@ -48,6 +49,7 @@ func NewClient(opts ...Option) *Client {
 
 	c.Players = endpoints.NewPlayerService(c)
 	c.Fixtures = endpoints.NewFixtureService(c)
+	c.Teams = endpoints.NewTeamService(c)
 
 	return c
 }

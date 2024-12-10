@@ -27,3 +27,37 @@ type Team struct {
 func (t *Team) GetShortName() string {
 	return t.ShortName
 }
+
+func (t *Team) GetFullName() string {
+	return t.Name
+}
+
+func (t *Team) GetWinRate() float64 {
+	if t.Played == 0 {
+		return 0.0
+	}
+	return float64(t.Win) / float64(t.Played) * 100
+}
+
+func (t *Team) GetDrawRate() float64 {
+	if t.Played == 0 {
+		return 0.0
+	}
+	return float64(t.Draw) / float64(t.Played) * 100
+}
+
+func (t *Team) GetLossRate() float64 {
+	if t.Played == 0 {
+		return 0.0
+	}
+	return float64(t.Loss) / float64(t.Played) * 100
+}
+
+// This can be used to check if a team is top 4 for example.
+func (t *Team) IsTopTeam(topN int) bool {
+	position := t.Position
+	if position != 0 {
+		return t.Position <= topN
+	}
+	return false
+}
