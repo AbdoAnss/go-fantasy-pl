@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/AbdoAnss/go-fantasy-pl/api"
-	"github.com/AbdoAnss/go-fantasy-pl/internal/cache"
 	"github.com/AbdoAnss/go-fantasy-pl/models"
 )
 
@@ -32,18 +31,12 @@ func NewFixtureService(client api.Client) *FixtureService {
 	}
 }
 
-// TODO:
-// Centralized Cache with Namespacing:
-// Use a single cache instance and differentiate keys using endpoint-specific prefixes.
-
-var fixturesCache = cache.NewCache()
-
 func init() {
-	fixturesCache.StartCleanupTask(5 * time.Minute)
+	sharedCache.StartCleanupTask(5 * time.Minute)
 }
 
 func (fs *FixtureService) GetAllFixtures() ([]models.Fixture, error) {
-	if cached, found := fixturesCache.Get("fixtures"); found {
+	if cached, found := sharedCache.Get("fixtures"); found {
 		if fixtures, ok := cached.([]models.Fixture); ok {
 			return fixtures, nil
 		}
@@ -60,13 +53,13 @@ func (fs *FixtureService) GetAllFixtures() ([]models.Fixture, error) {
 		return nil, fmt.Errorf("failed to decode fixtures: %w", err)
 	}
 
-	fixturesCache.Set("fixtures", fixtures, defaultCacheTTL)
+	sharedCache.Set("fixtures", fixtures, fixturesCacheTTL)
 
 	return fixtures, nil
 }
 
 func (fs *FixtureService) GetFixture(id int) (*models.Fixture, error) {
-	if cached, found := fixturesCache.Get(fmt.Sprintf("fixture_%d", id)); found {
+	if cached, found := sharedCache.Get(fmt.Sprintf("fixture_%d", id)); found {
 		if fixture, ok := cached.(*models.Fixture); ok {
 			return fixture, nil
 		}
@@ -79,7 +72,7 @@ func (fs *FixtureService) GetFixture(id int) (*models.Fixture, error) {
 
 	for _, f := range fixtures {
 		if f.ID == id {
-			fixturesCache.Set(fmt.Sprintf("fixture_%d", id), &f, defaultCacheTTL)
+			sharedCache.Set(fmt.Sprintf("fixture_%d", id), &f, fixturesCacheTTL)
 			return &f, nil
 		}
 	}

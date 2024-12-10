@@ -18,6 +18,9 @@ type Client struct {
 	baseURL    string
 	rateLimit  *rateLimiter
 
+	// core service
+	Bootstrap *endpoints.BootstrapService
+
 	// services
 	Players  *endpoints.PlayerService
 	Fixtures *endpoints.FixtureService
@@ -45,11 +48,14 @@ func NewClient(opts ...Option) *Client {
 		opt(c)
 	}
 
-	// services
+	// Bootstrap service
+	c.Bootstrap = endpoints.NewBootstrapService(c)
 
-	c.Players = endpoints.NewPlayerService(c)
+	// services dependant on bootstrap:
+	c.Players = endpoints.NewPlayerService(c, c.Bootstrap)
+	c.Teams = endpoints.NewTeamService(c, c.Bootstrap)
+	// standalone services
 	c.Fixtures = endpoints.NewFixtureService(c)
-	c.Teams = endpoints.NewTeamService(c)
 
 	return c
 }
