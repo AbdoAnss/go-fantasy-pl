@@ -7,14 +7,16 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var teamID = 13 // Example team ID
+var teamID = 13 // Example team ID: MAN CITY
+
+var testTeamClient *client.Client
 
 func init() {
-	testClient = client.NewClient()
+	testTeamClient = client.NewClient()
 }
 
 func TestGetAllTeams(t *testing.T) {
-	teams, err := testClient.Teams.GetAllTeams()
+	teams, err := testTeamClient.Teams.GetAllTeams()
 	assert.NoError(t, err, "expected no error when getting all teams")
 	assert.NotEmpty(t, teams, "expected teams to be returned from API")
 
@@ -38,7 +40,7 @@ func TestGetAllTeams(t *testing.T) {
 }
 
 func TestGetTeam(t *testing.T) {
-	team, err := testClient.Teams.GetTeam(teamID)
+	team, err := testTeamClient.Teams.GetTeam(teamID)
 	assert.NoError(t, err, "expected no error when getting team")
 	assert.NotNil(t, team, "expected team to be returned, got nil")
 

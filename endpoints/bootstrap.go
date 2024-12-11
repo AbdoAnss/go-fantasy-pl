@@ -21,7 +21,12 @@ var (
 	fixturesCacheTTL  = 10 * time.Minute
 	gameweeksCacheTTL = 3 * time.Minute // Gameweeks status might change more often
 	settingsCacheTTL  = 24 * time.Hour  // Game settings rarely change
+	managerCacheTTL   = 5 * time.Minute // Managers data updates frequently
 )
+
+func init() {
+	sharedCache.StartCleanupTask(5 * time.Minute)
+}
 
 type Response struct {
 	Teams    []models.Team       `json:"teams"`
@@ -89,6 +94,28 @@ func (bs *BootstrapService) GetGameWeeks() ([]models.GameWeek, error) {
 
 	sharedCache.Set(cacheKey, data.Events, gameweeksCacheTTL)
 	return data.Events, nil
+}
+
+func (bs *BootstrapService) GetCurrentGameWeek() (int, error) {
+	const cacheKey = "current_gameweek"
+	if cached, found := sharedCache.Get(cacheKey); found {
+		if gw, ok := cached.(int); ok {
+			return gw, nil
+		}
+	}
+	gameweeks, err := bs.GetGameWeeks()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get gameweeks: %w", err)
+	}
+
+	for _, gw := range gameweeks {
+		if gw.IsCurrent {
+			sharedCache.Set(cacheKey, gw.ID, gameweeksCacheTTL)
+			return gw.ID, nil
+		}
+	}
+
+	return 0, fmt.Errorf("failed to find current gameweek")
 }
 
 func (bs *BootstrapService) GetSettings() (*models.GameSettings, error) {

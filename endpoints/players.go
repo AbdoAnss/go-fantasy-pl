@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"time"
 
 	"github.com/AbdoAnss/go-fantasy-pl/api"
 	"github.com/AbdoAnss/go-fantasy-pl/models"
@@ -27,16 +26,10 @@ func NewPlayerService(client api.Client, bootstrap *BootstrapService) *PlayerSer
 	}
 }
 
-func init() {
-	sharedCache.StartCleanupTask(5 * time.Minute)
-}
-
-// GetAllPlayers now uses the bootstrap service to fetch players
 func (ps *PlayerService) GetAllPlayers() ([]models.Player, error) {
 	return ps.bootstrapService.GetPlayers()
 }
 
-// GetPlayer finds a specific player by ID
 func (ps *PlayerService) GetPlayer(id int) (*models.Player, error) {
 	players, err := ps.GetAllPlayers()
 	if err != nil {
@@ -51,7 +44,6 @@ func (ps *PlayerService) GetPlayer(id int) (*models.Player, error) {
 	return nil, fmt.Errorf("player with ID %d not found", id)
 }
 
-// GetPlayerHistory fetches detailed history for a specific player
 func (ps *PlayerService) GetPlayerHistory(id int) (*models.PlayerHistory, error) {
 	cacheKey := fmt.Sprintf("player_history_%d", id)
 	if cached, found := sharedCache.Get(cacheKey); found {

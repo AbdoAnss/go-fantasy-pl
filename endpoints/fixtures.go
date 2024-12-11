@@ -3,7 +3,6 @@ package endpoints
 import (
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/AbdoAnss/go-fantasy-pl/api"
 	"github.com/AbdoAnss/go-fantasy-pl/models"
@@ -29,10 +28,6 @@ func NewFixtureService(client api.Client) *FixtureService {
 	return &FixtureService{
 		client: client,
 	}
-}
-
-func init() {
-	sharedCache.StartCleanupTask(5 * time.Minute)
 }
 
 func (fs *FixtureService) GetAllFixtures() ([]models.Fixture, error) {

@@ -25,6 +25,7 @@ type Client struct {
 	Players  *endpoints.PlayerService
 	Fixtures *endpoints.FixtureService
 	Teams    *endpoints.TeamService
+	Managers *endpoints.ManagerService
 }
 
 func NewClient(opts ...Option) *Client {
@@ -54,6 +55,7 @@ func NewClient(opts ...Option) *Client {
 	// services dependant on bootstrap:
 	c.Players = endpoints.NewPlayerService(c, c.Bootstrap)
 	c.Teams = endpoints.NewTeamService(c, c.Bootstrap)
+	c.Managers = endpoints.NewManagerService(c, c.Bootstrap)
 	// standalone services
 	c.Fixtures = endpoints.NewFixtureService(c)
 
