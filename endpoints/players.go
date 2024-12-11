@@ -8,65 +8,35 @@ import (
 	"time"
 
 	"github.com/AbdoAnss/go-fantasy-pl/api"
-	"github.com/AbdoAnss/go-fantasy-pl/internal/cache"
 	"github.com/AbdoAnss/go-fantasy-pl/models"
 )
 
 const (
-	playersEndpoint       = "/bootstrap-static/"
 	playerDetailsEndpoint = "/element-summary/%d/"
 )
 
 type PlayerService struct {
-	client api.Client
+	client           api.Client
+	bootstrapService *BootstrapService
 }
 
-func NewPlayerService(client api.Client) *PlayerService {
+func NewPlayerService(client api.Client, bootstrap *BootstrapService) *PlayerService {
 	return &PlayerService{
-		client: client,
+		client:           client,
+		bootstrapService: bootstrap,
 	}
 }
-
-// TODO:
-// Centralized Cache with Namespacing:
-// Use a single cache instance and differentiate keys using endpoint-specific prefixes.
-
-var (
-	defaultCacheTTL = 10 * time.Minute
-	playersCache    = cache.NewCache()
-)
 
 func init() {
-	// Start cleanup task to run every 5 minute
-	playersCache.StartCleanupTask(5 * time.Minute)
+	sharedCache.StartCleanupTask(5 * time.Minute)
 }
 
+// GetAllPlayers now uses the bootstrap service to fetch players
 func (ps *PlayerService) GetAllPlayers() ([]models.Player, error) {
-	if cached, found := playersCache.Get("players"); found {
-		if players, ok := cached.([]models.Player); ok {
-			return players, nil
-		}
-	}
-
-	resp, err := ps.client.Get(playersEndpoint)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get players: %w", err)
-	}
-	defer resp.Body.Close()
-
-	var response struct {
-		Elements []models.Player `json:"elements"`
-	}
-
-	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
-		return nil, fmt.Errorf("failed to decode players: %w", err)
-	}
-
-	playersCache.Set("players", response.Elements, defaultCacheTTL)
-
-	return response.Elements, nil
+	return ps.bootstrapService.GetPlayers()
 }
 
+// GetPlayer finds a specific player by ID
 func (ps *PlayerService) GetPlayer(id int) (*models.Player, error) {
 	players, err := ps.GetAllPlayers()
 	if err != nil {
@@ -78,13 +48,13 @@ func (ps *PlayerService) GetPlayer(id int) (*models.Player, error) {
 			return &p, nil
 		}
 	}
-
 	return nil, fmt.Errorf("player with ID %d not found", id)
 }
 
+// GetPlayerHistory fetches detailed history for a specific player
 func (ps *PlayerService) GetPlayerHistory(id int) (*models.PlayerHistory, error) {
 	cacheKey := fmt.Sprintf("player_history_%d", id)
-	if cached, found := playersCache.Get(cacheKey); found {
+	if cached, found := sharedCache.Get(cacheKey); found {
 		if history, ok := cached.(*models.PlayerHistory); ok {
 			return history, nil
 		}
@@ -118,7 +88,6 @@ func (ps *PlayerService) GetPlayerHistory(id int) (*models.PlayerHistory, error)
 		return nil, fmt.Errorf("history is nil in response for player ID %d", id)
 	}
 
-	playersCache.Set(cacheKey, &history, defaultCacheTTL)
-
+	sharedCache.Set(cacheKey, &history, playersCacheTTL)
 	return &history, nil
 }

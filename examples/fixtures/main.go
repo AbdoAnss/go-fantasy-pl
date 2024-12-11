@@ -3,70 +3,116 @@ package main
 import (
 	"fmt"
 	"log"
+	"sort"
+	"time"
 
 	"github.com/AbdoAnss/go-fantasy-pl/client"
 )
 
 func main() {
-	c := client.NewClient()
+	fpl := client.NewClient()
 
-	fixtureID := 8 // Example fixture ID
-
-	// Get fixture details
-	fmt.Printf("Getting fixture details for ID %d...\n", fixtureID)
-	fixture, err := c.Fixtures.GetFixture(fixtureID)
+	// Get core data
+	players, err := fpl.Players.GetAllPlayers()
 	if err != nil {
-		log.Printf("Warning: Could not get fixture details: %v\n", err)
-		return
+		log.Fatalf("Failed to get players: %v", err)
 	}
 
-	fmt.Println("----------------------------------------")
-	fmt.Printf("Fixture ID: %d\n", fixture.ID)
-	fmt.Printf("Team A: %d vs Team H: %d\n", fixture.TeamA, fixture.TeamH)
-	fmt.Printf("Kickoff Time: %v\n", fixture.KickoffTime)
-	fmt.Printf("Finished: %v\n", fixture.Finished)
-	fmt.Printf("Team A Score: %v, Team H Score: %v\n", fixture.GetTeamAScore(), fixture.GetTeamHScore())
-	fmt.Println("----------------------------------------")
-
-	// Get goalscorers
-	goalscorers, err := fixture.GetGoalscorers()
+	teams, err := fpl.Teams.GetAllTeams()
 	if err != nil {
-		log.Printf("Warning: Could not get goalscorers: %v\n", err)
-	} else {
-		fmt.Println("Goalscorers:")
-		for team, players := range goalscorers {
-			fmt.Printf("Team %s:\n", team)
-			for _, player := range players {
-				fmt.Printf("Player ID: %d, Goals: %d\n", player.Element, player.Value)
-			}
+		log.Fatalf("Failed to get teams: %v", err)
+	}
+
+	fixtures, err := fpl.Fixtures.GetAllFixtures()
+	if err != nil {
+		log.Fatalf("Failed to get fixtures: %v", err)
+	}
+
+	// Create lookup maps
+	playerMap := make(map[int]struct {
+		ID   int
+		Name string
+	})
+	for _, p := range players {
+		playerMap[p.ID] = struct {
+			ID   int
+			Name string
+		}{p.ID, p.GetDisplayName()}
+	}
+
+	teamMap := make(map[int]struct {
+		ID   int
+		Name string
+	})
+	for _, t := range teams {
+		teamMap[t.ID] = struct {
+			ID   int
+			Name string
+		}{t.ID, t.GetFullName()}
+	}
+
+	// Sort fixtures with nil-safe comparison
+	sort.Slice(fixtures, func(i, j int) bool {
+		// Handle nil KickoffTime
+		if fixtures[i].KickoffTime == nil {
+			return false
 		}
-	}
-
-	// Get assisters
-	assisters, err := fixture.GetAssisters()
-	if err != nil {
-		log.Printf("Warning: Could not get assisters: %v\n", err)
-	} else {
-		fmt.Println("Assisters:")
-		for team, players := range assisters {
-			fmt.Printf("Team %s:\n", team)
-			for _, player := range players {
-				fmt.Printf("Player ID: %d, Assists: %d\n", player.Element, player.Value)
-			}
+		if fixtures[j].KickoffTime == nil {
+			return true
 		}
-	}
+		return fixtures[i].KickoffTime.Before(*fixtures[j].KickoffTime)
+	})
 
-	// Get bonus points
-	bonus, err := fixture.GetBonus()
-	if err != nil {
-		log.Printf("Warning: Could not get bonus points: %v\n", err)
-	} else {
-		fmt.Println("Bonus Points:")
-		for team, players := range bonus {
-			fmt.Printf("Team %s:\n", team)
-			for _, player := range players {
-				fmt.Printf("Player ID: %d, Bonus Points: %d\n", player.Element, player.Value)
+	fmt.Println("Recent and Upcoming Fixtures")
+	fmt.Println("============================")
+
+	now := time.Now()
+	analyzed := 0
+
+	for _, fix := range fixtures {
+		// Skip fixtures without kickoff time
+		if fix.KickoffTime == nil {
+			continue
+		}
+
+		// Skip old matches
+		if fix.KickoffTime.Before(now.Add(-7 * 24 * time.Hour)) {
+			continue
+		}
+
+		home := teamMap[fix.TeamH]
+		away := teamMap[fix.TeamA]
+
+		fmt.Printf("\n%s vs %s\n", home.Name, away.Name)
+		fmt.Printf("Kickoff: %s\n", fix.KickoffTime.Format(time.RFC822))
+
+		if fix.Started && fix.TeamHScore != nil && fix.TeamAScore != nil {
+			fmt.Printf("Score: %d - %d\n", *fix.TeamHScore, *fix.TeamAScore)
+
+			// Print scorers if available
+			if goals, err := fix.GetGoalscorers(); err == nil && len(goals) > 0 {
+				fmt.Println("Scorers:")
+				for _, scorer := range goals["h"] {
+					if player, ok := playerMap[scorer.Element]; ok {
+						fmt.Printf("  %s (%d)\n", player.Name, scorer.Value)
+					}
+				}
+				for _, scorer := range goals["a"] {
+					if player, ok := playerMap[scorer.Element]; ok {
+						fmt.Printf("  %s (%d)\n", player.Name, scorer.Value)
+					}
+				}
 			}
+		} else {
+			fmt.Printf("Difficulty: Home %d - Away %d\n",
+				fix.TeamHDifficulty, fix.TeamADifficulty)
+		}
+
+		fmt.Println("----------------------------------------")
+
+		analyzed++
+		if analyzed >= 5 {
+			break
 		}
 	}
 }

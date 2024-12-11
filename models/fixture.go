@@ -4,6 +4,18 @@ import (
 	"time"
 )
 
+const (
+	StatGoalsScored     = "goals_scored"
+	StatAssists         = "assists"
+	StatOwnGoals        = "own_goals"
+	StatYellowCards     = "yellow_cards"
+	StatRedCards        = "red_cards"
+	StatPenaltiesSaved  = "penalties_saved"
+	StatPenaltiesMissed = "penalties_missed"
+	StatSaves           = "saves"
+	StatBonus           = "bonus"
+)
+
 type Stat struct {
 	Identifier string       `json:"identifier"`
 	A          []StatDetail `json:"a"`
@@ -24,7 +36,7 @@ type Fixture struct {
 	KickoffTime          *time.Time `json:"kickoff_time"`
 	Minutes              int        `json:"minutes"`
 	ProvisionalStartTime bool       `json:"provisional_start_time"`
-	Started              *bool      `json:"started"`
+	Started              bool       `json:"started"`
 	TeamA                int        `json:"team_a"`
 	TeamAScore           *int       `json:"team_a_score"`
 	TeamH                int        `json:"team_h"`
@@ -36,117 +48,63 @@ type Fixture struct {
 }
 
 func (f *Fixture) GetTeamAScore() int {
+	if f.TeamAScore == nil {
+		return 0
+	}
 	return *f.TeamAScore
 }
 
 func (f *Fixture) GetTeamHScore() int {
+	if f.TeamHScore == nil {
+		return 0
+	}
 	return *f.TeamHScore
 }
 
-func (f *Fixture) GetGoalscorers() (map[string][]StatDetail, error) {
-	goals := make(map[string][]StatDetail)
+func (f *Fixture) getStat(identifier string) (map[string][]StatDetail, error) {
+	result := make(map[string][]StatDetail)
 	for _, stat := range f.Stats {
-		if stat.Identifier == "goals_scored" {
-			goals["a"] = stat.A
-			goals["h"] = stat.H
-			return goals, nil
+		if stat.Identifier == identifier {
+			result["a"] = stat.A
+			result["h"] = stat.H
+			return result, nil
 		}
 	}
-	return goals, nil
+	return result, nil
+}
+
+func (f *Fixture) GetGoalscorers() (map[string][]StatDetail, error) {
+	return f.getStat(StatGoalsScored)
 }
 
 func (f *Fixture) GetAssisters() (map[string][]StatDetail, error) {
-	assists := make(map[string][]StatDetail)
-	for _, stat := range f.Stats {
-		if stat.Identifier == "assists" {
-			assists["a"] = stat.A
-			assists["h"] = stat.H
-			return assists, nil
-		}
-	}
-	return assists, nil
+	return f.getStat(StatAssists)
 }
 
 func (f *Fixture) GetOwnGoalscorers() (map[string][]StatDetail, error) {
-	ownGoals := make(map[string][]StatDetail)
-	for _, stat := range f.Stats {
-		if stat.Identifier == "own_goals" {
-			ownGoals["a"] = stat.A
-			ownGoals["h"] = stat.H
-			return ownGoals, nil
-		}
-	}
-	return ownGoals, nil
+	return f.getStat(StatOwnGoals)
 }
 
 func (f *Fixture) GetYellowCards() (map[string][]StatDetail, error) {
-	yellowCards := make(map[string][]StatDetail)
-	for _, stat := range f.Stats {
-		if stat.Identifier == "yellow_cards" {
-			yellowCards["a"] = stat.A
-			yellowCards["h"] = stat.H
-			return yellowCards, nil
-		}
-	}
-	return yellowCards, nil
+	return f.getStat(StatYellowCards)
 }
 
 func (f *Fixture) GetRedCards() (map[string][]StatDetail, error) {
-	redCards := make(map[string][]StatDetail)
-	for _, stat := range f.Stats {
-		if stat.Identifier == "red_cards" {
-			redCards["a"] = stat.A
-			redCards["h"] = stat.H
-			return redCards, nil
-		}
-	}
-	return redCards, nil
+	return f.getStat(StatRedCards)
 }
 
 func (f *Fixture) GetPenaltySaves() (map[string][]StatDetail, error) {
-	penaltySaves := make(map[string][]StatDetail)
-	for _, stat := range f.Stats {
-		if stat.Identifier == "penalties_saved" {
-			penaltySaves["a"] = stat.A
-			penaltySaves["h"] = stat.H
-			return penaltySaves, nil
-		}
-	}
-	return penaltySaves, nil
+	return f.getStat(StatPenaltiesSaved)
 }
 
 func (f *Fixture) GetPenaltyMisses() (map[string][]StatDetail, error) {
-	penaltyMisses := make(map[string][]StatDetail)
-	for _, stat := range f.Stats {
-		if stat.Identifier == "penalties_missed" {
-			penaltyMisses["a"] = stat.A
-			penaltyMisses["h"] = stat.H
-			return penaltyMisses, nil
-		}
-	}
-	return penaltyMisses, nil
+	return f.getStat(StatPenaltiesMissed)
 }
 
 func (f *Fixture) GetSaves() (map[string][]StatDetail, error) {
-	saves := make(map[string][]StatDetail)
-	for _, stat := range f.Stats {
-		if stat.Identifier == "saves" {
-			saves["a"] = stat.A
-			saves["h"] = stat.H
-			return saves, nil
-		}
-	}
-	return saves, nil
+	return f.getStat(StatSaves)
 }
 
 func (f *Fixture) GetBonus() (map[string][]StatDetail, error) {
-	bonus := make(map[string][]StatDetail)
-	for _, stat := range f.Stats {
-		if stat.Identifier == "bonus" {
-			bonus["a"] = stat.A
-			bonus["h"] = stat.H
-			return bonus, nil
-		}
-	}
-	return bonus, nil
+	return f.getStat(StatBonus)
 }
