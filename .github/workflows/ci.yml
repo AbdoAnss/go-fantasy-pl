@@ -1,4 +1,4 @@
-name: Go CI/CD
+name: Go CI
 
 on:
   push:
@@ -10,9 +10,8 @@ on:
 
 jobs:
   test:
-    name: Test
+    name: Test & Lint
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -20,34 +19,29 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: 1.21
-
-      - name: Cache Go modules
-        uses: actions/cache@v3
-        with:
-          path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
+          go-version: '1.21'
+          cache: true
 
       - name: Install dependencies
         run: go mod tidy
 
-      - name: Run unit tests
-        run: go test ./... -v -coverprofile=coverage.out
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: latest
+
+      - name: Run tests
+        run: go test -race -coverprofile=coverage.out -covermode=atomic ./...
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v3
         with:
-          token: ${{ secrets.CODECOV_TOKEN }}
           files: coverage.out
           fail_ci_if_error: true
 
-  build:
-    name: Build
+  verify:
+    name: Verify
     runs-on: ubuntu-latest
-    needs: [test]
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -55,30 +49,21 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: 1.23
+          go-version: '1.21'
+          cache: true
 
-      - name: Build application
+      - name: Verify dependencies
+        run: go mod verify
+
+      - name: Build
         run: go build -v ./...
 
-  docker-build:
-    name: Docker Build
-    runs-on: ubuntu-latest
-    needs: [build]
+      - name: Run vet
+        run: go vet ./...
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Log in to DockerHub
-        uses: docker/login-action@v2
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v4
-        with:
-          context: .
-          push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/go-fantasy-pl:latest
-
+      - name: Check format
+        run: |
+          if [ -n "$(go fmt ./...)" ]; then
+            echo "Code is not formatted, run 'go fmt ./...'"
+            exit 1
+          fi
