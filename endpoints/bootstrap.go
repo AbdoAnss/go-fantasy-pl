@@ -22,6 +22,7 @@ var (
 	gameweeksCacheTTL = 3 * time.Minute // Gameweeks status might change more often
 	settingsCacheTTL  = 24 * time.Hour  // Game settings rarely change
 	managerCacheTTL   = 5 * time.Minute // Managers data updates frequently
+	leagueCacheTTL    = 5 * time.Minute // Leagues update frequently
 )
 
 func init() {
