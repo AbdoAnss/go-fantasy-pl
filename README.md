@@ -5,7 +5,7 @@ This project provides a Go wrapper for the Fantasy Premier League (FPL) API, off
 
 ## Installation
 ```bash
-go get github.com/abdoanss/go-fantasy-pl
+go get github.com/AbdoAnss/go-fantasy-pl
 ```
 
 ## Key Features
