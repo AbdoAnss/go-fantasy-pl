@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"time"
@@ -68,6 +69,20 @@ func (c *Client) Get(endpoint string) (*http.Response, error) {
 	c.rateLimit.Wait()
 	url := c.baseURL + endpoint
 	resp, err := c.httpClient.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("request failed: %w", err)
+	}
+	return resp, nil
+}
+
+func (c *Client) GetContext(ctx context.Context, endpoint string) (*http.Response, error) {
+	c.rateLimit.Wait()
+	url := c.baseURL + endpoint
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("request failed: %w", err)
 	}
