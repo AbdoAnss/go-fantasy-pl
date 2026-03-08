@@ -31,10 +31,9 @@ func NewFixtureService(client api.Client) *FixtureService {
 }
 
 func (fs *FixtureService) GetAllFixtures() ([]models.Fixture, error) {
-	if cached, found := sharedCache.Get("fixtures"); found {
-		if fixtures, ok := cached.([]models.Fixture); ok {
-			return fixtures, nil
-		}
+	var fixtures []models.Fixture
+	if sharedCache.Get("fixtures", &fixtures) {
+		return fixtures, nil
 	}
 
 	resp, err := fs.client.Get(fixturesEndpoint)
@@ -43,7 +42,6 @@ func (fs *FixtureService) GetAllFixtures() ([]models.Fixture, error) {
 	}
 	defer resp.Body.Close()
 
-	var fixtures []models.Fixture
 	if err := json.NewDecoder(resp.Body).Decode(&fixtures); err != nil {
 		return nil, fmt.Errorf("failed to decode fixtures: %w", err)
 	}
@@ -54,10 +52,9 @@ func (fs *FixtureService) GetAllFixtures() ([]models.Fixture, error) {
 }
 
 func (fs *FixtureService) GetFixture(id int) (*models.Fixture, error) {
-	if cached, found := sharedCache.Get(fmt.Sprintf("fixture_%d", id)); found {
-		if fixture, ok := cached.(*models.Fixture); ok {
-			return fixture, nil
-		}
+	var fixture models.Fixture
+	if sharedCache.Get(fmt.Sprintf("fixture_%d", id), &fixture) {
+		return &fixture, nil
 	}
 
 	fixtures, err := fs.GetAllFixtures()

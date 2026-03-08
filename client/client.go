@@ -18,6 +18,7 @@ type Client struct {
 	httpClient *http.Client
 	baseURL    string
 	rateLimit  *rateLimiter
+	cacheErr   error // set when a cache option fails (e.g. Redis unreachable)
 
 	// core service
 	Bootstrap *endpoints.BootstrapService
@@ -30,7 +31,7 @@ type Client struct {
 	Leagues  *endpoints.LeagueService
 }
 
-func NewClient(opts ...Option) *Client {
+func NewClient(opts ...Option) (*Client, error) {
 	c := &Client{
 		httpClient: &http.Client{
 			Timeout: defaultTimeout,
@@ -51,6 +52,10 @@ func NewClient(opts ...Option) *Client {
 		opt(c)
 	}
 
+	if c.cacheErr != nil {
+		return nil, fmt.Errorf("client: cache configuration failed: %w", c.cacheErr)
+	}
+
 	// Bootstrap service
 	c.Bootstrap = endpoints.NewBootstrapService(c)
 
@@ -62,7 +67,7 @@ func NewClient(opts ...Option) *Client {
 	c.Fixtures = endpoints.NewFixtureService(c)
 	c.Leagues = endpoints.NewLeagueService(c)
 
-	return c
+	return c, nil
 }
 
 func (c *Client) Get(endpoint string) (*http.Response, error) {

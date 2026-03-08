@@ -32,10 +32,9 @@ func (ls *LeagueService) GetClassicLeagueStandings(id, page int) (*models.Classi
 
 	if useCache {
 		cacheKey := fmt.Sprintf("classic_league_%d_page_%d", id, page)
-		if cached, found := sharedCache.Get(cacheKey); found {
-			if league, ok := cached.(*models.ClassicLeague); ok {
-				return league, nil
-			}
+		var league models.ClassicLeague
+		if sharedCache.Get(cacheKey, &league) {
+			return &league, nil
 		}
 	}
 

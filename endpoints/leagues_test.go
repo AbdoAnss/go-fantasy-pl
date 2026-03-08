@@ -10,7 +10,11 @@ import (
 var testLeagueClient *client.Client
 
 func init() {
-	testLeagueClient = client.NewClient()
+	var err error
+	testLeagueClient, err = client.NewClient()
+	if err != nil {
+		panic(err)
+	}
 }
 
 func TestLeagueEndpoints(t *testing.T) {

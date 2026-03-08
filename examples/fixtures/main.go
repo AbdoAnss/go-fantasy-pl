@@ -10,7 +10,10 @@ import (
 )
 
 func main() {
-	fpl := client.NewClient()
+	fpl, err := client.NewClient()
+	if err != nil {
+		log.Fatalf("Failed to create client: %v", err)
+	}
 
 	// Get core data
 	players, err := fpl.Players.GetAllPlayers()

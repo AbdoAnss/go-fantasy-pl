@@ -10,7 +10,11 @@ import (
 var testManagerClient *client.Client
 
 func init() {
-	testManagerClient = client.NewClient()
+	var err error
+	testManagerClient, err = client.NewClient()
+	if err != nil {
+		panic(err)
+	}
 }
 
 func TestManagerEndpoints(t *testing.T) {

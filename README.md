@@ -11,7 +11,7 @@ go get github.com/AbdoAnss/go-fantasy-pl
 ## Key Features
 - Type-safe access to FPL data
 - Rate limiting handling
-- Response caching
+- Pluggable caching: in-memory (default) or Redis for distributed deployments
 - Easy-to-use client interface
 
 ## Available Data
@@ -48,17 +48,21 @@ package main
 
 import (
     "fmt"
-    "github.com/abdoanss/go-fantasy-pl/client"
+    "log"
+    "github.com/AbdoAnss/go-fantasy-pl/client"
 )
 
 func main() {
-    // Initialize client
-    fpl := client.NewClient()
+    // Initialize client (uses in-memory cache by default)
+    fpl, err := client.NewClient()
+    if err != nil {
+        log.Fatal(err)
+    }
 
     // Get all teams
     teams, err := fpl.Teams.GetAllTeams()
     if err != nil {
-        panic(err)
+        log.Fatal(err)
     }
 
     // Print team names
@@ -69,7 +73,7 @@ func main() {
     // Get all players
     players, err := fpl.Players.GetAllPlayers()
     if err != nil {
-        panic(err)
+        log.Fatal(err)
     }
 
     // Print top 5 players by points
@@ -96,11 +100,42 @@ func main() {
 - Game Settings: General FPL game configuration
 
 ### Caching
-The wrapper includes an optional caching system with configurable TTL for:
-- Team data (24 hours)
-- Player data (10 minutes)
-- Fixture data (10 minutes)
-- Game settings (24 hours)
+The wrapper includes a caching system with configurable TTL.
+
+#### In-Memory Cache (default)
+Suitable for single-process deployments (personal analytics, scripts):
+- Team data: 24 hours
+- Player data: 10 minutes
+- Fixture data: 10 minutes
+- Game settings: 24 hours
+
+#### Redis Cache (for distributed / microservice deployments)
+When running multiple instances of your service (e.g. horizontally-scaled pods), use
+Redis so all instances share a single cache and avoid redundant API calls:
+
+```go
+import (
+    "log"
+    "github.com/AbdoAnss/go-fantasy-pl/client"
+    "github.com/AbdoAnss/go-fantasy-pl/internal/cache"
+)
+
+fpl, err := client.NewClient(
+    client.WithRedisCache(cache.RedisOptions{
+        Addr:      "redis:6379",   // Redis server address
+        Password:  "",             // Redis AUTH password (leave empty if none)
+        DB:        0,              // Redis database index
+        KeyPrefix: "fpl",         // Key prefix to avoid collisions with other apps
+    }),
+)
+if err != nil {
+    log.Fatalf("Failed to create client: %v", err)
+}
+```
+
+All TTLs remain the same regardless of the cache backend. `NewClient` returns an
+error if the Redis server cannot be reached during startup, so misconfiguration is
+caught early.
 
 ### Rate Limiting
 Automatic rate limiting is implemented to prevent exceeding FPL's API limits:

@@ -7,12 +7,16 @@ import (
 	"github.com/AbdoAnss/go-fantasy-pl/endpoints"
 	"github.com/AbdoAnss/go-fantasy-pl/models"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var fixtureID int
 
 func setupFixtureTestService() *endpoints.FixtureService {
-	c := client.NewClient()
+	c, err := client.NewClient()
+	if err != nil {
+		panic(err)
+	}
 	fixtureID = 8
 	return endpoints.NewFixtureService(c)
 }
@@ -34,7 +38,8 @@ func getTeamMap(t *testing.T, c *client.Client) map[int]*models.Team {
 }
 
 func TestGetAllFixtures(t *testing.T) {
-	c := client.NewClient()
+	c, err := client.NewClient()
+	require.NoError(t, err)
 	fs := endpoints.NewFixtureService(c)
 
 	// Get team mappings for better readability
