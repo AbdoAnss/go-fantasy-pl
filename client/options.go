@@ -40,6 +40,7 @@ func WithRateLimit(requests int, interval time.Duration) Option {
 // WithRedisCache configures the client to use a Redis-backed distributed cache.
 // This replaces the default in-memory cache, enabling safe use across multiple
 // instances (e.g. in a horizontally-scaled microservice deployment).
+// NewClient returns an error if the Redis server is unreachable.
 //
 // Example:
 //

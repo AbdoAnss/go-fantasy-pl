@@ -25,7 +25,8 @@ func newTestRedisCache(t *testing.T, keyPrefix string) (*cache.RedisCache, *mini
 // TestRedisCache_Contract validates that RedisCache satisfies the same
 // behavioral contract as MemoryCache by reusing the shared test suite.
 func TestRedisCache_Contract(t *testing.T) {
-	c, mr := newTestRedisCache(t, "")
+	// Use a key prefix so that Clear() is not a no-op
+	c, mr := newTestRedisCache(t, "test")
 	defer mr.Close()
 
 	testCacheImplementation(t, c)
@@ -75,6 +76,20 @@ func TestRedisCache_Clear_WithPrefix(t *testing.T) {
 	var v string
 	assert.False(t, c.Get("a", &v))
 	assert.False(t, c.Get("b", &v))
+}
+
+func TestRedisCache_Clear_NoPrefix_IsNoOp(t *testing.T) {
+	c, mr := newTestRedisCache(t, "")
+	defer mr.Close()
+
+	// Write a key directly into miniredis (simulating another application's data)
+	mr.Set("other_app_key", "sensitive")
+
+	// Clear without a prefix should NOT delete any keys
+	c.Clear()
+
+	assert.True(t, mr.Exists("other_app_key"),
+		"Clear with no prefix must not delete keys from other applications")
 }
 
 func TestRedisCache_NewRedisCache_ConnectionError(t *testing.T) {

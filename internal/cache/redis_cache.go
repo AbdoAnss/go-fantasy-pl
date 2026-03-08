@@ -104,25 +104,30 @@ func (r *RedisCache) Delete(key string) {
 }
 
 // Clear removes all keys that match the cache prefix from Redis.
-// If no prefix is set, it flushes the entire database (FLUSHDB).
-// Use with caution in shared Redis instances — always configure a KeyPrefix.
+// If no prefix is configured, Clear is a no-op to prevent accidentally
+// flushing keys from other applications sharing the same Redis instance.
+// Always configure a KeyPrefix when using a shared Redis instance.
 func (r *RedisCache) Clear() {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
 	if r.prefix == "" {
-		r.client.FlushDB(ctx)
 		return
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
 	pattern := r.prefix + ":*"
 	iter := r.client.Scan(ctx, 0, pattern, 0).Iterator()
-	var keys []string
+	const batchSize = 100
+	batch := make([]string, 0, batchSize)
 	for iter.Next(ctx) {
-		keys = append(keys, iter.Val())
+		batch = append(batch, iter.Val())
+		if len(batch) >= batchSize {
+			r.client.Del(ctx, batch...)
+			batch = batch[:0]
+		}
 	}
-	if len(keys) > 0 {
-		r.client.Del(ctx, keys...)
+	if len(batch) > 0 {
+		r.client.Del(ctx, batch...)
 	}
 }
 

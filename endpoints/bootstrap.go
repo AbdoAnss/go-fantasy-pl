@@ -114,10 +114,10 @@ func (bs *BootstrapService) GetCurrentGameWeek() (int, error) {
 		return 0, fmt.Errorf("failed to get gameweeks: %w", err)
 	}
 
-	for _, g := range gameweeks {
-		if g.IsCurrent {
-			sharedCache.Set(cacheKey, g.ID, gameweeksCacheTTL)
-			return g.ID, nil
+	for _, gw := range gameweeks {
+		if gw.IsCurrent {
+			sharedCache.Set(cacheKey, gw.ID, gameweeksCacheTTL)
+			return gw.ID, nil
 		}
 	}
 
