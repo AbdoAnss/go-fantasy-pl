@@ -46,10 +46,9 @@ func (ps *PlayerService) GetPlayer(id int) (*models.Player, error) {
 
 func (ps *PlayerService) GetPlayerHistory(id int) (*models.PlayerHistory, error) {
 	cacheKey := fmt.Sprintf("player_history_%d", id)
-	if cached, found := sharedCache.Get(cacheKey); found {
-		if history, ok := cached.(*models.PlayerHistory); ok {
-			return history, nil
-		}
+	var cached models.PlayerHistory
+	if sharedCache.Get(cacheKey, &cached) {
+		return &cached, nil
 	}
 
 	endpoint := fmt.Sprintf(playerDetailsEndpoint, id)

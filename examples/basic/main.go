@@ -11,7 +11,10 @@ import (
 
 func main() {
 	// Step 1: Initialize the FPL client
-	fpl := client.NewClient()
+	fpl, err := client.NewClient()
+	if err != nil {
+		log.Fatalf("Failed to create client: %v", err)
+	}
 
 	// Step 2: Get all teams and create a team map for quick lookups
 	teams, err := fpl.Teams.GetAllTeams()

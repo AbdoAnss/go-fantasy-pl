@@ -11,7 +11,8 @@ import (
 )
 
 func TestGetAllPlayersAsync(t *testing.T) {
-	c := client.NewClient()
+	c, err := client.NewClient()
+	require.NoError(t, err)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -24,7 +25,8 @@ func TestGetAllPlayersAsync(t *testing.T) {
 }
 
 func TestGetPlayerHistoryAsync(t *testing.T) {
-	c := client.NewClient()
+	c, err := client.NewClient()
+	require.NoError(t, err)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -37,7 +39,8 @@ func TestGetPlayerHistoryAsync(t *testing.T) {
 }
 
 func TestGetPlayerHistoryAsyncContextCancel(t *testing.T) {
-	c := client.NewClient()
+	c, err := client.NewClient()
+	require.NoError(t, err)
 	ctx, cancel := context.WithCancel(context.Background())
 
 	resultCh := c.Players.GetPlayerHistoryAsync(ctx, playerID)
@@ -56,7 +59,8 @@ func TestGetPlayerHistoryAsyncContextCancel(t *testing.T) {
 }
 
 func TestGetPlayerHistoriesBatch(t *testing.T) {
-	c := client.NewClient()
+	c, err := client.NewClient()
+	require.NoError(t, err)
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
@@ -78,7 +82,8 @@ func TestGetPlayerHistoriesBatch(t *testing.T) {
 }
 
 func TestGetAllFixturesAsync(t *testing.T) {
-	c := client.NewClient()
+	c, err := client.NewClient()
+	require.NoError(t, err)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -91,7 +96,8 @@ func TestGetAllFixturesAsync(t *testing.T) {
 }
 
 func TestGetAllTeamsAsync(t *testing.T) {
-	c := client.NewClient()
+	c, err := client.NewClient()
+	require.NoError(t, err)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -104,7 +110,8 @@ func TestGetAllTeamsAsync(t *testing.T) {
 }
 
 func TestConcurrentAsyncRequests(t *testing.T) {
-	c := client.NewClient()
+	c, err := client.NewClient()
+	require.NoError(t, err)
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 

@@ -12,7 +12,11 @@ var teamID = 13 // Example team ID: MAN CITY
 var testTeamClient *client.Client
 
 func init() {
-	testTeamClient = client.NewClient()
+	var err error
+	testTeamClient, err = client.NewClient()
+	if err != nil {
+		panic(err)
+	}
 }
 
 func TestGetAllTeams(t *testing.T) {

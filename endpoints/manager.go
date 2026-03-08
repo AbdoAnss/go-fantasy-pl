@@ -41,10 +41,9 @@ func (ms *ManagerService) validateManager(manager *models.Manager) error {
 
 func (ms *ManagerService) GetManager(id int) (*models.Manager, error) {
 	cacheKey := fmt.Sprintf("manager_%d", id)
-	if cached, found := sharedCache.Get(cacheKey); found {
-		if manager, ok := cached.(*models.Manager); ok {
-			return manager, nil
-		}
+	var manager models.Manager
+	if sharedCache.Get(cacheKey, &manager) {
+		return &manager, nil
 	}
 
 	endpoint := fmt.Sprintf(managerDetailsEndpoint, id)
@@ -67,7 +66,6 @@ func (ms *ManagerService) GetManager(id int) (*models.Manager, error) {
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	var manager models.Manager
 	if err := json.Unmarshal(body, &manager); err != nil {
 		return nil, fmt.Errorf("failed to decode manager data: %w", err)
 	}
@@ -83,10 +81,9 @@ func (ms *ManagerService) GetManager(id int) (*models.Manager, error) {
 
 func (ms *ManagerService) GetCurrentTeam(managerID int) (*models.ManagerTeam, error) {
 	cacheKey := fmt.Sprintf("manager_team_%d", managerID)
-	if cached, found := sharedCache.Get(cacheKey); found {
-		if team, ok := cached.(*models.ManagerTeam); ok {
-			return team, nil
-		}
+	var team models.ManagerTeam
+	if sharedCache.Get(cacheKey, &team) {
+		return &team, nil
 	}
 
 	currentGameWeekID, err := ms.bootstrapService.GetCurrentGameWeek()
@@ -105,7 +102,6 @@ func (ms *ManagerService) GetCurrentTeam(managerID int) (*models.ManagerTeam, er
 		return nil, fmt.Errorf("failed to get manager team: status %d", resp.StatusCode)
 	}
 
-	var team models.ManagerTeam
 	if err := json.NewDecoder(resp.Body).Decode(&team); err != nil {
 		return nil, fmt.Errorf("failed to decode manager team: %w", err)
 	}
@@ -116,10 +112,9 @@ func (ms *ManagerService) GetCurrentTeam(managerID int) (*models.ManagerTeam, er
 
 func (ms *ManagerService) GetManagerHistory(id int) (*models.ManagerHistory, error) {
 	cacheKey := fmt.Sprintf("manager_history_%d", id)
-	if cached, found := sharedCache.Get(cacheKey); found {
-		if ManagerHistory, ok := cached.(*models.ManagerHistory); ok {
-			return ManagerHistory, nil
-		}
+	var managerHistory models.ManagerHistory
+	if sharedCache.Get(cacheKey, &managerHistory) {
+		return &managerHistory, nil
 	}
 
 	endpoint := fmt.Sprintf(managerHistoryEndpoint, id)
@@ -142,7 +137,6 @@ func (ms *ManagerService) GetManagerHistory(id int) (*models.ManagerHistory, err
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	var managerHistory models.ManagerHistory
 	if err := json.Unmarshal(body, &managerHistory); err != nil {
 		return nil, fmt.Errorf("failed to decode manager data: %w", err)
 	}

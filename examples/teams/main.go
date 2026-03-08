@@ -8,7 +8,10 @@ import (
 )
 
 func main() {
-	c := client.NewClient()
+	c, err := client.NewClient()
+	if err != nil {
+		log.Fatalf("Failed to create client: %v", err)
+	}
 
 	teamID := 8 // Example team ID : Everton
 

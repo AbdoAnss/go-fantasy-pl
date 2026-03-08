@@ -8,7 +8,10 @@ import (
 )
 
 func main() {
-	c := client.NewClient()
+	c, err := client.NewClient()
+	if err != nil {
+		log.Fatalf("Failed to create client: %v", err)
+	}
 	playerID := 328 // Salah's ID
 
 	fmt.Printf("Getting player details for ID %d...\n", playerID)

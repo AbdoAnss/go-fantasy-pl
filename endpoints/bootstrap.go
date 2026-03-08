@@ -15,18 +15,26 @@ const (
 )
 
 var (
-	sharedCache       = cache.NewCache()
-	teamsCacheTTL     = 24 * time.Hour   // Teams rarely change
-	playersCacheTTL   = 10 * time.Minute // Players update more frequently (injuries, etc)
-	fixturesCacheTTL  = 10 * time.Minute
-	gameweeksCacheTTL = 3 * time.Minute // Gameweeks status might change more often
-	settingsCacheTTL  = 24 * time.Hour  // Game settings rarely change
-	managerCacheTTL   = 5 * time.Minute // Managers data updates frequently
-	leagueCacheTTL    = 5 * time.Minute // Leagues update frequently
+	sharedCache       cache.Cache = cache.NewMemoryCache()
+	teamsCacheTTL                 = 24 * time.Hour   // Teams rarely change
+	playersCacheTTL               = 10 * time.Minute // Players update more frequently (injuries, etc)
+	fixturesCacheTTL              = 10 * time.Minute
+	gameweeksCacheTTL             = 3 * time.Minute // Gameweeks status might change more often
+	settingsCacheTTL              = 24 * time.Hour  // Game settings rarely change
+	managerCacheTTL               = 5 * time.Minute // Managers data updates frequently
+	leagueCacheTTL                = 5 * time.Minute // Leagues update frequently
 )
 
 func init() {
-	sharedCache.StartCleanupTask(5 * time.Minute)
+	if mc, ok := sharedCache.(*cache.MemoryCache); ok {
+		mc.StartCleanupTask(5 * time.Minute)
+	}
+}
+
+// SetSharedCache replaces the cache used by all endpoint services.
+// Call this before creating any client instances, typically via client.WithRedisCache.
+func SetSharedCache(c cache.Cache) {
+	sharedCache = c
 }
 
 type Response struct {
@@ -48,10 +56,9 @@ func NewBootstrapService(client api.Client) *BootstrapService {
 
 func (bs *BootstrapService) GetTeams() ([]models.Team, error) {
 	const cacheKey = "teams"
-	if cached, found := sharedCache.Get(cacheKey); found {
-		if teams, ok := cached.([]models.Team); ok {
-			return teams, nil
-		}
+	var teams []models.Team
+	if sharedCache.Get(cacheKey, &teams) {
+		return teams, nil
 	}
 
 	data, err := bs.fetchBootstrapData()
@@ -65,10 +72,9 @@ func (bs *BootstrapService) GetTeams() ([]models.Team, error) {
 
 func (bs *BootstrapService) GetPlayers() ([]models.Player, error) {
 	const cacheKey = "players"
-	if cached, found := sharedCache.Get(cacheKey); found {
-		if players, ok := cached.([]models.Player); ok {
-			return players, nil
-		}
+	var players []models.Player
+	if sharedCache.Get(cacheKey, &players) {
+		return players, nil
 	}
 
 	data, err := bs.fetchBootstrapData()
@@ -82,10 +88,9 @@ func (bs *BootstrapService) GetPlayers() ([]models.Player, error) {
 
 func (bs *BootstrapService) GetGameWeeks() ([]models.GameWeek, error) {
 	const cacheKey = "gameweeks"
-	if cached, found := sharedCache.Get(cacheKey); found {
-		if gw, ok := cached.([]models.GameWeek); ok {
-			return gw, nil
-		}
+	var gw []models.GameWeek
+	if sharedCache.Get(cacheKey, &gw) {
+		return gw, nil
 	}
 
 	data, err := bs.fetchBootstrapData()
@@ -99,20 +104,20 @@ func (bs *BootstrapService) GetGameWeeks() ([]models.GameWeek, error) {
 
 func (bs *BootstrapService) GetCurrentGameWeek() (int, error) {
 	const cacheKey = "current_gameweek"
-	if cached, found := sharedCache.Get(cacheKey); found {
-		if gw, ok := cached.(int); ok {
-			return gw, nil
-		}
+	var gw int
+	if sharedCache.Get(cacheKey, &gw) {
+		return gw, nil
 	}
+
 	gameweeks, err := bs.GetGameWeeks()
 	if err != nil {
 		return 0, fmt.Errorf("failed to get gameweeks: %w", err)
 	}
 
-	for _, gw := range gameweeks {
-		if gw.IsCurrent {
-			sharedCache.Set(cacheKey, gw.ID, gameweeksCacheTTL)
-			return gw.ID, nil
+	for _, g := range gameweeks {
+		if g.IsCurrent {
+			sharedCache.Set(cacheKey, g.ID, gameweeksCacheTTL)
+			return g.ID, nil
 		}
 	}
 
@@ -121,10 +126,9 @@ func (bs *BootstrapService) GetCurrentGameWeek() (int, error) {
 
 func (bs *BootstrapService) GetSettings() (*models.GameSettings, error) {
 	const cacheKey = "settings"
-	if cached, found := sharedCache.Get(cacheKey); found {
-		if settings, ok := cached.(*models.GameSettings); ok {
-			return settings, nil
-		}
+	var settings models.GameSettings
+	if sharedCache.Get(cacheKey, &settings) {
+		return &settings, nil
 	}
 
 	data, err := bs.fetchBootstrapData()
@@ -132,9 +136,8 @@ func (bs *BootstrapService) GetSettings() (*models.GameSettings, error) {
 		return nil, fmt.Errorf("failed to get settings: %w", err)
 	}
 
-	settings := &data.Settings
-	sharedCache.Set(cacheKey, settings, settingsCacheTTL)
-	return settings, nil
+	sharedCache.Set(cacheKey, data.Settings, settingsCacheTTL)
+	return &data.Settings, nil
 }
 
 func (bs *BootstrapService) fetchBootstrapData() (*Response, error) {

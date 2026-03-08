@@ -13,7 +13,11 @@ var (
 )
 
 func init() {
-	testClient = client.NewClient()
+	var err error
+	testClient, err = client.NewClient()
+	if err != nil {
+		panic(err)
+	}
 }
 
 func TestGetAllPlayers(t *testing.T) {
