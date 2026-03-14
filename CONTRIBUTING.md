@@ -1,81 +1,74 @@
 # Contributing to go-fantasy-pl
 
-Thanks for considering contributing to go-fantasy-pl! This document will help you get started.
+Thanks for helping improve this project.
 
-## Getting Started
+## Quick Start
 
-1. Fork the repository
-2. Clone your fork:
-   ```bash
-   git clone https://github.com/YourUsername/go-fantasy-pl
-   cd go-fantasy-pl
-   ```
-3. Add the upstream remote:
-   ```bash
-   git remote add upstream https://github.com/AbdoAnss/go-fantasy-pl
-   ```
+```bash
+git clone https://github.com/AbdoAnss/go-fantasy-pl.git
+cd go-fantasy-pl
+go mod download
+go test ./...
+```
 
-## Development Setup
+Use Go `1.23+`.
 
-1. Ensure you have Go 1.23 or later installed
-2. Install dependencies:
-   ```bash
-   go mod download
-   ```
-3. Run tests:
-   ```bash
-   go test ./...
-   ```
+## Workflow
 
-## Making Changes
+1. Create a branch from `main`.
+2. Make focused changes.
+3. Add or update tests.
+4. Run checks locally.
+5. Open a PR with a clear description.
 
-1. Create a new branch:
-   ```bash
-   git checkout -b feature/your-feature-name
-   ```
-2. Make your changes
-3. Run tests and ensure they pass
-4. Update documentation if needed
-5. Commit your changes with clear messages
+Branch name examples:
 
-## Code Standards
+- `feat/async-docs`
+- `fix/cache-error-handling`
+- `chore/test-cleanup`
 
-- Follow Go best practices and conventions
-- Use meaningful variable and function names
-- Add comments for complex logic
-- Update tests for new functionality
-- Handle errors appropriately
+## Local Checks
 
-## Pull Request Process
+Run these before pushing:
 
-1. Update your fork with the latest upstream changes
-2. Push your changes to your fork
-3. Create a Pull Request from your fork to our main branch
-4. Describe your changes in detail
-5. Link any relevant issues
+```bash
+gofmt -w .
+go test ./...
+```
 
-## Testing
+If you have `golangci-lint` installed:
 
-- Write unit tests for new functionality
-- Ensure all tests pass before submitting PR
-- Include integration tests where appropriate
-- Test edge cases and error conditions
+```bash
+golangci-lint run
+```
 
-## Documentation
+## Code Guidelines
 
-- Update README.md for significant changes
-- Add godoc comments to exported functions
-- Include examples for new features
-- Update examples in the `/examples` directory
+- Keep APIs simple and predictable.
+- Prefer small, testable functions.
+- Handle errors explicitly.
+- Add comments only where logic is non-obvious.
+- Keep examples in `examples/` working.
 
-## Questions or Issues?
+## Pull Requests
 
-Feel free to open an issue for:
-- Bug reports
-- Feature requests
-- Questions about the codebase
-- Documentation improvements
+Please include:
+
+- What changed
+- Why it changed
+- Any breaking change notes
+- Linked issue (if applicable)
+
+PR checklist:
+
+- Tests pass
+- Docs updated when behavior changes
+- No unrelated refactors
+
+## Issues
+
+Open an issue for bugs, feature requests, or documentation improvements.
 
 ## License
 
-By contributing, you agree that your contributions will be licensed under the same license as the project.
+By contributing, you agree your contributions are licensed under the [MIT License](LICENSE).
