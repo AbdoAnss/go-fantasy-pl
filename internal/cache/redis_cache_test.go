@@ -83,7 +83,7 @@ func TestRedisCache_Clear_NoPrefix_IsNoOp(t *testing.T) {
 	defer mr.Close()
 
 	// Write a key directly into miniredis (simulating another application's data)
-	mr.Set("other_app_key", "sensitive")
+	require.NoError(t, mr.Set("other_app_key", "sensitive"))
 
 	// Clear without a prefix should NOT delete any keys
 	c.Clear()
