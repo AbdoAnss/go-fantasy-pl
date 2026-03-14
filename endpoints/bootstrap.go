@@ -65,6 +65,9 @@ func (bs *BootstrapService) GetTeams() ([]models.Team, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get teams: %w", err)
 	}
+	if sharedCache == nil {
+		return nil, fmt.Errorf("shared cache is not initialized")
+	}
 
 	sharedCache.Set(cacheKey, data.Teams, teamsCacheTTL)
 	return data.Teams, nil
@@ -81,6 +84,9 @@ func (bs *BootstrapService) GetPlayers() ([]models.Player, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get players: %w", err)
 	}
+	if sharedCache == nil {
+		return nil, fmt.Errorf("shared cache is not initialized")
+	}
 
 	sharedCache.Set(cacheKey, data.Elements, playersCacheTTL)
 	return data.Elements, nil
@@ -96,6 +102,10 @@ func (bs *BootstrapService) GetGameWeeks() ([]models.GameWeek, error) {
 	data, err := bs.fetchBootstrapData()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get gameweeks: %w", err)
+	}
+
+	if sharedCache == nil {
+		return nil, fmt.Errorf("shared cache is not initialized")
 	}
 
 	sharedCache.Set(cacheKey, data.Events, gameweeksCacheTTL)
@@ -134,6 +144,10 @@ func (bs *BootstrapService) GetSettings() (*models.GameSettings, error) {
 	data, err := bs.fetchBootstrapData()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get settings: %w", err)
+	}
+
+	if sharedCache == nil {
+		return nil, fmt.Errorf("shared cache is not initialized")
 	}
 
 	sharedCache.Set(cacheKey, data.Settings, settingsCacheTTL)
