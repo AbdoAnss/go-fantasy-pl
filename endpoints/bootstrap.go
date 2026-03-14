@@ -66,7 +66,9 @@ func (bs *BootstrapService) GetTeams() ([]models.Team, error) {
 		return nil, fmt.Errorf("failed to get teams: %w", err)
 	}
 
-	sharedCache.Set(cacheKey, data.Teams, teamsCacheTTL)
+	if err := sharedCache.Set(cacheKey, data.Teams, teamsCacheTTL); err != nil {
+		return nil, fmt.Errorf("failed to cache teams: %w", err)
+	}
 	return data.Teams, nil
 }
 
@@ -82,7 +84,9 @@ func (bs *BootstrapService) GetPlayers() ([]models.Player, error) {
 		return nil, fmt.Errorf("failed to get players: %w", err)
 	}
 
-	sharedCache.Set(cacheKey, data.Elements, playersCacheTTL)
+	if err := sharedCache.Set(cacheKey, data.Elements, playersCacheTTL); err != nil {
+		return nil, fmt.Errorf("failed to cache players: %w", err)
+	}
 	return data.Elements, nil
 }
 
@@ -98,7 +102,9 @@ func (bs *BootstrapService) GetGameWeeks() ([]models.GameWeek, error) {
 		return nil, fmt.Errorf("failed to get gameweeks: %w", err)
 	}
 
-	sharedCache.Set(cacheKey, data.Events, gameweeksCacheTTL)
+	if err := sharedCache.Set(cacheKey, data.Events, gameweeksCacheTTL); err != nil {
+		return nil, fmt.Errorf("failed to cache gameweeks: %w", err)
+	}
 	return data.Events, nil
 }
 
@@ -116,7 +122,9 @@ func (bs *BootstrapService) GetCurrentGameWeek() (int, error) {
 
 	for _, gw := range gameweeks {
 		if gw.IsCurrent {
-			sharedCache.Set(cacheKey, gw.ID, gameweeksCacheTTL)
+			if err := sharedCache.Set(cacheKey, gw.ID, gameweeksCacheTTL); err != nil {
+				return 0, fmt.Errorf("failed to cache current gameweek: %w", err)
+			}
 			return gw.ID, nil
 		}
 	}
@@ -136,7 +144,9 @@ func (bs *BootstrapService) GetSettings() (*models.GameSettings, error) {
 		return nil, fmt.Errorf("failed to get settings: %w", err)
 	}
 
-	sharedCache.Set(cacheKey, data.Settings, settingsCacheTTL)
+	if err := sharedCache.Set(cacheKey, data.Settings, settingsCacheTTL); err != nil {
+		return nil, fmt.Errorf("failed to cache settings: %w", err)
+	}
 	return &data.Settings, nil
 }
 
