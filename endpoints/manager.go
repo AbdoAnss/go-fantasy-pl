@@ -74,7 +74,9 @@ func (ms *ManagerService) GetManager(id int) (*models.Manager, error) {
 		return nil, err
 	}
 
-	sharedCache.Set(cacheKey, &manager, managerCacheTTL)
+	if err := sharedCache.Set(cacheKey, &manager, managerCacheTTL); err != nil {
+		return nil, fmt.Errorf("failed to cache manager data: %w", err)
+	}
 
 	return &manager, nil
 }
@@ -106,7 +108,9 @@ func (ms *ManagerService) GetCurrentTeam(managerID int) (*models.ManagerTeam, er
 		return nil, fmt.Errorf("failed to decode manager team: %w", err)
 	}
 
-	sharedCache.Set(cacheKey, &team, managerCacheTTL)
+	if err := sharedCache.Set(cacheKey, &team, managerCacheTTL); err != nil {
+		return nil, fmt.Errorf("failed to cache manager team: %w", err)
+	}
 	return &team, nil
 }
 
@@ -141,7 +145,9 @@ func (ms *ManagerService) GetManagerHistory(id int) (*models.ManagerHistory, err
 		return nil, fmt.Errorf("failed to decode manager data: %w", err)
 	}
 
-	sharedCache.Set(cacheKey, &managerHistory, managerCacheTTL)
+	if err := sharedCache.Set(cacheKey, &managerHistory, managerCacheTTL); err != nil {
+		return nil, fmt.Errorf("failed to cache manager history: %w", err)
+	}
 
 	return &managerHistory, nil
 }

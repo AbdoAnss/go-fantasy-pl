@@ -112,7 +112,9 @@ func (ls *LeagueService) GetH2HLeague(id int) (*models.H2HLeague, error) {
         return nil, fmt.Errorf("failed to decode H2H league data: %w", err)
     }
 
-    sharedCache.Set(cacheKey, &league, leagueCacheTTL)
+	if err := sharedCache.Set(cacheKey, &league, leagueCacheTTL); err != nil {
+		return nil, fmt.Errorf("failed to cache H2H league data: %w", err)
+	}
     return &league, nil
 }
 */

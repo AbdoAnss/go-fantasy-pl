@@ -79,6 +79,8 @@ func (ps *PlayerService) GetPlayerHistory(id int) (*models.PlayerHistory, error)
 		return nil, fmt.Errorf("history is nil in response for player ID %d", id)
 	}
 
-	sharedCache.Set(cacheKey, &history, playersCacheTTL)
+	if err := sharedCache.Set(cacheKey, &history, playersCacheTTL); err != nil {
+		return nil, fmt.Errorf("failed to cache player history: %w", err)
+	}
 	return &history, nil
 }
