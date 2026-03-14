@@ -1,29 +1,52 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/AbdoAnss/go-fantasy-pl/client"
+	"github.com/AbdoAnss/go-fantasy-pl/models"
 )
+
+const separator = "----------------------------------------"
+
+func findTeam(teams []models.Team, teamID int) (models.Team, bool) {
+	for _, team := range teams {
+		if team.ID == teamID {
+			return team, true
+		}
+	}
+
+	return models.Team{}, false
+}
 
 func main() {
 	c, err := client.NewClient()
 	if err != nil {
 		log.Fatalf("Failed to create client: %v", err)
 	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
 	teamID := 8 // Example team ID : Everton
 
-	// Get team details
+	// Get team details through the async teams list endpoint
 	fmt.Printf("Getting team details for ID %d...\n", teamID)
-	team, err := c.Teams.GetTeam(teamID)
-	if err != nil {
-		log.Printf("Warning: Could not get team details: %v\n", err)
+	teamsResult := <-c.Teams.GetAllTeamsAsync(ctx)
+	if teamsResult.Err != nil {
+		log.Printf("Warning: Could not get teams: %v\n", teamsResult.Err)
 		return
 	}
 
-	fmt.Println("----------------------------------------")
+	team, found := findTeam(teamsResult.Value, teamID)
+	if !found {
+		log.Printf("Warning: Could not find team with ID %d\n", teamID)
+		return
+	}
+
+	fmt.Println(separator)
 	fmt.Printf("Team ID: %d\n", team.ID)
 	fmt.Printf("Team Name: %s\n", team.GetFullName())
 	fmt.Printf("Short Name: %s\n", team.GetShortName())
@@ -46,5 +69,5 @@ func main() {
 		fmt.Printf("The team is not in the top %d.\n", topN)
 	}
 
-	fmt.Println("----------------------------------------")
+	fmt.Println(separator)
 }

@@ -1,172 +1,125 @@
-# Fantasy Premier League API Wrapper for Go
+# go-fantasy-pl
 
-## Overview
-This project provides a Go wrapper for the Fantasy Premier League (FPL) API, offering a type-safe and idiomatic way to interact with FPL data. The wrapper focuses on read operations for essential FPL data.
+Simple Go client for the Fantasy Premier League API.
 
-## Installation
+It supports players, teams, fixtures, managers, leagues, caching, and rate limiting. For workloads that need multiple independent datasets, the async helpers are now the best option because they let you fetch data concurrently.
+
+## Install
+
 ```bash
 go get github.com/AbdoAnss/go-fantasy-pl
 ```
 
-## Key Features
-- Type-safe access to FPL data
-- Rate limiting handling
-- Pluggable caching: in-memory (default) or Redis for distributed deployments
-- Easy-to-use client interface
+## What you get
 
-## Available Data
-The wrapper currently provides access to:
-- Player statistics and information
-- Team data
-- Fixture information
-- General game settings
+- Typed models for FPL responses
+- Simple client setup
+- Built-in rate limiting
+- In-memory cache by default
+- Optional Redis cache
+- Async helpers for concurrent reads
 
-## Project Structure
-```
-go-fantasy-pl/
-├── client/             # Core HTTP client implementation
-│   ├── client.go       # Main client struct and configuration
-│   ├── options.go      # Configuration options for the client
-│   └── rate_limiter.go # Rate limiting implementation
-├── models/             # Data structures for API responses
-│   ├── player.go       # Player-related structs
-│   ├── team.go         # Team-related structs
-│   └── fixture.go      # Fixture-related structs
-├── endpoints/          # API endpoint implementations
-│   ├── bootstrap.go    # General game data
-│   ├── players.go      # Player-related endpoints
-│   ├── teams.go        # Team-related endpoints
-│   └── fixtures.go     # Match fixtures
-├── internal/           # Internal packages
-│   └── cache/          # Caching functionality
-└── examples/           # Usage examples
-```
+## Quick start
 
-## Quick Start
 ```go
 package main
 
 import (
     "fmt"
     "log"
+
     "github.com/AbdoAnss/go-fantasy-pl/client"
 )
 
 func main() {
-    // Initialize client (uses in-memory cache by default)
-    fpl, err := client.NewClient()
+    c, err := client.NewClient()
     if err != nil {
         log.Fatal(err)
     }
 
-    // Get all teams
-    teams, err := fpl.Teams.GetAllTeams()
+    teams, err := c.Teams.GetAllTeams()
     if err != nil {
         log.Fatal(err)
     }
 
-    // Print team names
-    for _, team := range teams {
-        fmt.Printf("Team: %s\n", team.GetFullName())
-    }
-
-    // Get all players
-    players, err := fpl.Players.GetAllPlayers()
+    players, err := c.Players.GetAllPlayers()
     if err != nil {
         log.Fatal(err)
     }
 
-    // Print top 5 players by points
-    fmt.Println("\nTop 5 Players:")
-    for i, player := range players[:5] {
-        fmt.Printf("%d. %s - Points: %d\n", 
-            i+1, player.GetDisplayName(), player.TotalPoints)
-    }
+    fmt.Printf("teams: %d\n", len(teams))
+    fmt.Printf("players: %d\n", len(players))
 }
 ```
 
-## Features
+## Async usage
 
-### Client
-- Configurable HTTP client
-- Built-in rate limiting
-- Automatic request retries
-- Response caching
-
-### Available Data Types
-- Teams: Full team information and statistics
-- Players: Detailed player data and performance stats
-- Fixtures: Match information and results
-- Game Settings: General FPL game configuration
-
-### Caching
-The wrapper includes a caching system with configurable TTL.
-
-#### In-Memory Cache (default)
-Suitable for single-process deployments (personal analytics, scripts):
-- Team data: 24 hours
-- Player data: 10 minutes
-- Fixture data: 10 minutes
-- Game settings: 24 hours
-
-#### Redis Cache (for distributed / microservice deployments)
-When running multiple instances of your service (e.g. horizontally-scaled pods), use
-Redis so all instances share a single cache and avoid redundant API calls:
+If you want the fastest path when fetching players, teams, and fixtures together, use the async methods and wait on the result channels.
 
 ```go
+package main
+
 import (
+    "context"
+    "fmt"
     "log"
+    "time"
+
     "github.com/AbdoAnss/go-fantasy-pl/client"
-    "github.com/AbdoAnss/go-fantasy-pl/internal/cache"
 )
 
-fpl, err := client.NewClient(
-    client.WithRedisCache(cache.RedisOptions{
-        Addr:      "redis:6379",   // Redis server address
-        Password:  "",             // Redis AUTH password (leave empty if none)
-        DB:        0,              // Redis database index
-        KeyPrefix: "fpl",         // Key prefix to avoid collisions with other apps
-    }),
-)
-if err != nil {
-    log.Fatalf("Failed to create client: %v", err)
+func main() {
+    c, err := client.NewClient()
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+    defer cancel()
+
+    playersCh := c.Players.GetAllPlayersAsync(ctx)
+    teamsCh := c.Teams.GetAllTeamsAsync(ctx)
+    fixturesCh := c.Fixtures.GetAllFixturesAsync(ctx)
+
+    players := <-playersCh
+    teams := <-teamsCh
+    fixtures := <-fixturesCh
+
+    if players.Err != nil {
+        log.Fatal(players.Err)
+    }
+    if teams.Err != nil {
+        log.Fatal(teams.Err)
+    }
+    if fixtures.Err != nil {
+        log.Fatal(fixtures.Err)
+    }
+
+    fmt.Printf("players: %d, teams: %d, fixtures: %d\n",
+        len(players.Value), len(teams.Value), len(fixtures.Value))
 }
 ```
 
-All TTLs remain the same regardless of the cache backend. `NewClient` returns an
-error if the Redis server cannot be reached during startup, so misconfiguration is
-caught early.
+Available async helpers:
 
-### Rate Limiting
-Automatic rate limiting is implemented to prevent exceeding FPL's API limits:
-- Default: 50 requests per minute
-- Configurable through client options
-- Automatic request queuing
+- `GetAllPlayersAsync(ctx)`
+- `GetPlayerHistoryAsync(ctx, playerID)`
+- `GetPlayerHistoriesBatch(ctx, ids)`
+- `GetAllTeamsAsync(ctx)`
+- `GetAllFixturesAsync(ctx)`
+
+## Cache
+
+Default cache is in-memory. Redis-backed caching is also supported when you want shared cache across multiple instances.
 
 ## Examples
-Check the `examples/` directory for complete usage examples, including:
-- Basic data retrieval
-- Fixture analysis
-- Player statistics
-- Team information
+
+See `examples/` for working examples.
 
 ## Contributing
-Contributions are welcome! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
 
-## Error Handling
-The wrapper provides detailed error messages for:
-- API errors
-- Network issues
-- Invalid responses
-- Rate limiting
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
-[MIT License](./LICENSE)
 
-## Version
-Current version: v0.1.0
-
-## Limitations
-- Read-only access (no team management operations)
-- Subject to FPL API rate limits
-- Some data may be delayed based on FPL API updates
+[MIT](LICENSE)

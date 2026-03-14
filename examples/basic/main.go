@@ -1,13 +1,17 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"sort"
+	"time"
 
 	"github.com/AbdoAnss/go-fantasy-pl/client"
 	"github.com/AbdoAnss/go-fantasy-pl/models"
 )
+
+const separator = "----------------------------------------"
 
 func main() {
 	// Step 1: Initialize the FPL client
@@ -15,12 +19,29 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create client: %v", err)
 	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
-	// Step 2: Get all teams and create a team map for quick lookups
-	teams, err := fpl.Teams.GetAllTeams()
-	if err != nil {
-		log.Fatalf("Failed to get teams: %v", err)
+	// Step 2: Fetch core datasets concurrently
+	teamsCh := fpl.Teams.GetAllTeamsAsync(ctx)
+	playersCh := fpl.Players.GetAllPlayersAsync(ctx)
+	fixturesCh := fpl.Fixtures.GetAllFixturesAsync(ctx)
+
+	teamsResult := <-teamsCh
+	playersResult := <-playersCh
+	fixturesResult := <-fixturesCh
+
+	if teamsResult.Err != nil {
+		log.Fatalf("Failed to get teams: %v", teamsResult.Err)
 	}
+	if playersResult.Err != nil {
+		log.Fatalf("Failed to get players: %v", playersResult.Err)
+	}
+	if fixturesResult.Err != nil {
+		log.Fatalf("Failed to get fixtures: %v", fixturesResult.Err)
+	}
+
+	teams := teamsResult.Value
 	teamMap := make(map[int]models.Team)
 	for _, team := range teams {
 		teamMap[team.ID] = team
@@ -36,13 +57,10 @@ func main() {
 	for i, team := range sortedTeams[:5] {
 		fmt.Printf("%d. %s (Strength: %d)\n", i+1, team.GetFullName(), team.Strength)
 	}
-	fmt.Println("----------------------------------------")
+	fmt.Println(separator)
 
-	// Step 4: Get all players and find top performers
-	players, err := fpl.Players.GetAllPlayers()
-	if err != nil {
-		log.Fatalf("Failed to get players: %v", err)
-	}
+	// Step 4: Use the concurrently fetched players
+	players := playersResult.Value
 
 	// Sort players by total points
 	sort.Slice(players, func(i, j int) bool {
@@ -60,13 +78,10 @@ func main() {
 			player.GetPriceInPounds(),
 			player.TotalPoints)
 	}
-	fmt.Println("----------------------------------------")
+	fmt.Println(separator)
 
-	// Step 6: Get upcoming fixtures
-	fixtures, err := fpl.Fixtures.GetAllFixtures()
-	if err != nil {
-		log.Fatalf("Failed to get fixtures: %v", err)
-	}
+	// Step 6: Use the concurrently fetched fixtures
+	fixtures := fixturesResult.Value
 
 	// Filter for upcoming fixtures
 	var upcomingFixtures []models.Fixture
@@ -87,14 +102,15 @@ func main() {
 			awayTeam.GetShortName(), awayTeam.Strength,
 			fix.Event)
 	}
-	fmt.Println("----------------------------------------")
+	fmt.Println(separator)
 
 	// Step 8: Get detailed history for a top player
 	topPlayer := players[0]
-	history, err := fpl.Players.GetPlayerHistory(topPlayer.ID)
-	if err != nil {
-		log.Fatalf("Failed to get player history: %v", err)
+	historyResult := <-fpl.Players.GetPlayerHistoryAsync(ctx, topPlayer.ID)
+	if historyResult.Err != nil {
+		log.Fatalf("Failed to get player history: %v", historyResult.Err)
 	}
+	history := historyResult.Value
 
 	fmt.Printf("Recent Performance - %s:\n", topPlayer.GetDisplayName())
 	sort.Slice(history.History, func(i, j int) bool {
