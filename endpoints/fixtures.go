@@ -46,7 +46,9 @@ func (fs *FixtureService) GetAllFixtures() ([]models.Fixture, error) {
 		return nil, fmt.Errorf("failed to decode fixtures: %w", err)
 	}
 
-	sharedCache.Set("fixtures", fixtures, fixturesCacheTTL)
+	if err := sharedCache.Set("fixtures", fixtures, fixturesCacheTTL); err != nil {
+		return nil, fmt.Errorf("failed to cache fixtures: %w", err)
+	}
 
 	return fixtures, nil
 }
@@ -64,7 +66,9 @@ func (fs *FixtureService) GetFixture(id int) (*models.Fixture, error) {
 
 	for _, f := range fixtures {
 		if f.ID == id {
-			sharedCache.Set(fmt.Sprintf("fixture_%d", id), &f, fixturesCacheTTL)
+			if err := sharedCache.Set(fmt.Sprintf("fixture_%d", id), &f, fixturesCacheTTL); err != nil {
+				return nil, fmt.Errorf("failed to cache fixture %d: %w", id, err)
+			}
 			return &f, nil
 		}
 	}

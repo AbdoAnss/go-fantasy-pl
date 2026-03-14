@@ -69,7 +69,9 @@ func (ls *LeagueService) GetClassicLeagueStandings(id, page int) (*models.Classi
 
 	if useCache {
 		cacheKey := fmt.Sprintf("classic_league_%d_page_%d", id, page)
-		sharedCache.Set(cacheKey, &league, leagueCacheTTL)
+		if err := sharedCache.Set(cacheKey, &league, leagueCacheTTL); err != nil {
+			return nil, fmt.Errorf("failed to cache league standings: %w", err)
+		}
 	}
 
 	return &league, nil
