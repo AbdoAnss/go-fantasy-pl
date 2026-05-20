@@ -5,6 +5,8 @@ import (
 	"time"
 )
 
+// rateLimiter implements a token bucket algorithm to control the rate of outgoing API requests.
+// It is thread-safe and can be shared across multiple goroutines.
 type rateLimiter struct {
 	tokens     int
 	maxTokens  int
@@ -13,6 +15,7 @@ type rateLimiter struct {
 	mu         sync.Mutex
 }
 
+// newRateLimiter initializes a new rateLimiter with the specified capacity and refill interval.
 func newRateLimiter(maxTokens int, interval time.Duration) *rateLimiter {
 	return &rateLimiter{
 		tokens:     maxTokens,
@@ -22,6 +25,8 @@ func newRateLimiter(maxTokens int, interval time.Duration) *rateLimiter {
 	}
 }
 
+// Wait blocks the calling goroutine until a token becomes available in the bucket.
+// It automatically refills tokens based on the elapsed time since the last refill.
 func (r *rateLimiter) Wait() {
 	r.mu.Lock()
 	defer r.mu.Unlock()

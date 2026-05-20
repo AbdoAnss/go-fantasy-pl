@@ -2,8 +2,9 @@ package models
 
 import "time"
 
-// TODO: Implement Manager leagues
-
+// Manager represents an FPL entry (manager).
+// It contains profile data, overall and event-specific scoring summary,
+// and basic biographical information.
 type Manager struct {
 	ID                         *int      `json:"id"`
 	JoinedTime                 time.Time `json:"joined_time"`
@@ -30,6 +31,7 @@ type Manager struct {
 	LastDeadlineTotalTransfers int       `json:"last_deadline_total_transfers"`
 }
 
+// GetFullName returns the real-world name of the FPL manager.
 func (m *Manager) GetFullName() string {
 	return m.PlayerFirstName + " " + m.PlayerLastName
 }

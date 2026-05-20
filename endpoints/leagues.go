@@ -16,16 +16,21 @@ const (
 	maxPageCache          = 3 // Only cache first 3 pages
 )
 
+// LeagueService provides methods for fetching league standings and details,
+// supporting both classic and head-to-head (H2H) leagues.
 type LeagueService struct {
 	client api.Client
 }
 
+// NewLeagueService creates a new instance of the LeagueService.
 func NewLeagueService(client api.Client) *LeagueService {
 	return &LeagueService{
 		client: client,
 	}
 }
 
+// GetClassicLeagueStandings returns the standings for a classic league by its unique ID.
+// The page parameter allows for paginated access to large leagues (50 entries per page).
 func (ls *LeagueService) GetClassicLeagueStandings(id, page int) (*models.ClassicLeague, error) {
 	// Only cache first few pages to prevent memory bloat
 	useCache := page <= maxPageCache
@@ -77,48 +82,6 @@ func (ls *LeagueService) GetClassicLeagueStandings(id, page int) (*models.Classi
 	return &league, nil
 }
 
-/*
-func (ls *LeagueService) GetH2HLeague(id int) (*models.H2HLeague, error) {
-    cacheKey := fmt.Sprintf("h2h_league_%d", id)
-    if cached, found := sharedCache.Get(cacheKey); found {
-        if league, ok := cached.(*models.H2HLeague); ok {
-            return league, nil
-        }
-    }
-
-    endpoint := fmt.Sprintf(h2hLeagueEndpoint, id)
-    resp, err := ls.client.Get(endpoint)
-    if err != nil {
-        return nil, fmt.Errorf("failed to get H2H league: %w", err)
-    }
-    defer resp.Body.Close()
-
-    switch resp.StatusCode {
-    case http.StatusOK:
-        // Continue processing
-    case http.StatusNotFound:
-        return nil, fmt.Errorf("H2H league with ID %d not found", id)
-    default:
-        return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
-    }
-
-    body, err := io.ReadAll(resp.Body)
-    if err != nil {
-        return nil, fmt.Errorf("failed to read response body: %w", err)
-    }
-
-    var league models.H2HLeague
-    if err := json.Unmarshal(body, &league); err != nil {
-        return nil, fmt.Errorf("failed to decode H2H league data: %w", err)
-    }
-
-	if err := sharedCache.Set(cacheKey, &league, leagueCacheTTL); err != nil {
-		return nil, fmt.Errorf("failed to cache H2H league data: %w", err)
-	}
-    return &league, nil
-}
-*/
-
 func (ls *LeagueService) validateLeague(league *models.ClassicLeague) error {
 	if league == nil {
 		return fmt.Errorf("received nil league data")
@@ -129,6 +92,7 @@ func (ls *LeagueService) validateLeague(league *models.ClassicLeague) error {
 	return nil
 }
 
+// GetTotalPages calculates the total number of pages in a classic league.
 func (ls *LeagueService) GetTotalPages(league *models.ClassicLeague) int {
 	if league == nil || len(league.Standings.Results) == 0 {
 		return 0

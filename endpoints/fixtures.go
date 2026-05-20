@@ -12,10 +12,12 @@ const (
 	fixturesEndpoint = "/fixtures/"
 )
 
+// FixtureService provides access to Premier League fixtures and match details.
 type FixtureService struct {
 	client api.Client
 }
 
+// FixtureNotFoundError is returned when a specific fixture cannot be found.
 type FixtureNotFoundError struct {
 	ID int
 }
@@ -24,15 +26,18 @@ func (e *FixtureNotFoundError) Error() string {
 	return fmt.Sprintf("fixture with ID %d not found", e.ID)
 }
 
+// NewFixtureService creates a new instance of the FixtureService.
 func NewFixtureService(client api.Client) *FixtureService {
 	return &FixtureService{
 		client: client,
 	}
 }
 
+// GetAllFixtures returns a list of all Premier League fixtures for the current season.
 func (fs *FixtureService) GetAllFixtures() ([]models.Fixture, error) {
+	const cacheKey = "fixtures"
 	var fixtures []models.Fixture
-	if sharedCache.Get("fixtures", &fixtures) {
+	if sharedCache.Get(cacheKey, &fixtures) {
 		return fixtures, nil
 	}
 
@@ -46,16 +51,18 @@ func (fs *FixtureService) GetAllFixtures() ([]models.Fixture, error) {
 		return nil, fmt.Errorf("failed to decode fixtures: %w", err)
 	}
 
-	if err := sharedCache.Set("fixtures", fixtures, fixturesCacheTTL); err != nil {
+	if err := sharedCache.Set(cacheKey, fixtures, fixturesCacheTTL); err != nil {
 		return nil, fmt.Errorf("failed to cache fixtures: %w", err)
 	}
 
 	return fixtures, nil
 }
 
+// GetFixture returns a single fixture by its unique FPL ID.
 func (fs *FixtureService) GetFixture(id int) (*models.Fixture, error) {
+	cacheKey := fmt.Sprintf("fixture_%d", id)
 	var fixture models.Fixture
-	if sharedCache.Get(fmt.Sprintf("fixture_%d", id), &fixture) {
+	if sharedCache.Get(cacheKey, &fixture) {
 		return &fixture, nil
 	}
 
@@ -66,7 +73,7 @@ func (fs *FixtureService) GetFixture(id int) (*models.Fixture, error) {
 
 	for _, f := range fixtures {
 		if f.ID == id {
-			if err := sharedCache.Set(fmt.Sprintf("fixture_%d", id), &f, fixturesCacheTTL); err != nil {
+			if err := sharedCache.Set(cacheKey, &f, fixturesCacheTTL); err != nil {
 				return nil, fmt.Errorf("failed to cache fixture %d: %w", id, err)
 			}
 			return &f, nil

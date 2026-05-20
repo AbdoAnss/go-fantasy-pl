@@ -1,5 +1,9 @@
+// Package models defines the data structures used throughout the FPL SDK.
+// These models map directly to the JSON responses from the official FPL API.
 package models
 
+// Player represents an FPL player (referred to as an "element" in the API).
+// It contains summary data, current season performance, and ownership statistics.
 type Player struct {
 	ID                       int     `json:"id"`
 	FirstName                string  `json:"first_name"`
@@ -60,10 +64,12 @@ type Player struct {
 	SelectedRankType         int     `json:"selected_rank_type"`
 }
 
+// GetDisplayName returns the full name of the player.
 func (p *Player) GetDisplayName() string {
 	return p.FirstName + " " + p.SecondName
 }
 
+// GetPriceInPounds returns the current cost of the player in millions of pounds (e.g., 8.5).
 func (p *Player) GetPriceInPounds() float64 {
 	return p.NowCost / 10
 }

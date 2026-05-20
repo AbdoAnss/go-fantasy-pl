@@ -1,125 +1,181 @@
 # go-fantasy-pl
 
-Simple Go client for the Fantasy Premier League API.
+[![Go Report Card](https://goreportcard.com/badge/github.com/AbdoAnss/go-fantasy-pl)](https://goreportcard.com/report/github.com/AbdoAnss/go-fantasy-pl)
+[![Go Reference](https://pkg.go.dev/badge/github.com/AbdoAnss/go-fantasy-pl.svg)](https://pkg.go.dev/github.com/AbdoAnss/go-fantasy-pl)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-It supports players, teams, fixtures, managers, leagues, caching, and rate limiting. For workloads that need multiple independent datasets, the async helpers are now the best option because they let you fetch data concurrently.
+A feature-rich, high-performance Go SDK for the official [Fantasy Premier League API](https://fantasy.premierleague.com/api).
 
-## Install
+`go-fantasy-pl` provides a typed, idiomatic interface for interacting with FPL data. It includes built-in caching, automatic rate limiting, and asynchronous helpers for high-throughput workloads.
+
+## Key Features
+
+- Performance-first async helpers for fetching players, teams, and fixtures concurrently.
+- Fully typed models for FPL API responses.
+- Redis-first caching with automatic in-memory fallback for local development.
+- Configurable timeouts, rate limits, and base URLs.
+- Modular service-based architecture for testing and extension.
+
+## Installation
 
 ```bash
 go get github.com/AbdoAnss/go-fantasy-pl
 ```
 
-## What you get
+Requires Go 1.23 or higher.
 
-- Typed models for FPL responses
-- Simple client setup
-- Built-in rate limiting
-- In-memory cache by default
-- Optional Redis cache
-- Async helpers for concurrent reads
-
-## Quick start
+## Quick Start
 
 ```go
 package main
 
 import (
-    "fmt"
-    "log"
+	"fmt"
+	"log"
 
-    "github.com/AbdoAnss/go-fantasy-pl/client"
+	"github.com/AbdoAnss/go-fantasy-pl/client"
 )
 
 func main() {
-    c, err := client.NewClient()
-    if err != nil {
-        log.Fatal(err)
-    }
+	c, err := client.NewClient()
+	if err != nil {
+		log.Fatalf("failed to create client: %v", err)
+	}
 
-    teams, err := c.Teams.GetAllTeams()
-    if err != nil {
-        log.Fatal(err)
-    }
+	teams, err := c.Teams.GetAllTeams()
+	if err != nil {
+		log.Fatalf("failed to fetch teams: %v", err)
+	}
 
-    players, err := c.Players.GetAllPlayers()
-    if err != nil {
-        log.Fatal(err)
-    }
+	players, err := c.Players.GetAllPlayers()
+	if err != nil {
+		log.Fatalf("failed to fetch players: %v", err)
+	}
 
-    fmt.Printf("teams: %d\n", len(teams))
-    fmt.Printf("players: %d\n", len(players))
+	fmt.Printf("Successfully loaded %d teams and %d players.\n", len(teams), len(players))
 }
 ```
 
-## Async usage
+## Caching
 
-If you want the fastest path when fetching players, teams, and fixtures together, use the async methods and wait on the result channels.
+`client.NewClient()` now prefers Redis by default.
+
+- If Redis is reachable, the SDK uses it automatically.
+- If Redis is not reachable, the SDK falls back to the in-memory cache.
+- If you want Redis to be mandatory, set `FPL_CACHE_BACKEND=redis`.
+- If you want to force in-memory caching, use `client.WithMemoryCache()` or set `FPL_CACHE_BACKEND=memory`.
+
+### Environment Variables
+
+```bash
+export REDIS_ADDR=localhost:6379
+export REDIS_PASSWORD=
+export REDIS_DB=0
+export REDIS_KEY_PREFIX=go-fantasy-pl
+export FPL_CACHE_BACKEND=auto
+```
+
+Supported `FPL_CACHE_BACKEND` values:
+
+- `auto`: try Redis first, then fall back to memory.
+- `redis`: require Redis and fail client creation if it is unavailable.
+- `memory`: skip Redis and use the in-memory cache.
+
+### Explicit Redis Configuration
+
+```go
+c, err := client.NewClient(
+	client.WithRedisCache(client.RedisOptions{
+		Addr:      "localhost:6379",
+		Password:  "",
+		DB:        0,
+		KeyPrefix: "go-fantasy-pl",
+	}),
+)
+```
+
+## Advanced Usage
+
+### Asynchronous Data Retrieval
 
 ```go
 package main
 
 import (
-    "context"
-    "fmt"
-    "log"
-    "time"
+	"context"
+	"fmt"
+	"log"
+	"time"
 
-    "github.com/AbdoAnss/go-fantasy-pl/client"
+	"github.com/AbdoAnss/go-fantasy-pl/client"
 )
 
 func main() {
-    c, err := client.NewClient()
-    if err != nil {
-        log.Fatal(err)
-    }
+	c, err := client.NewClient()
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-    defer cancel()
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
 
-    playersCh := c.Players.GetAllPlayersAsync(ctx)
-    teamsCh := c.Teams.GetAllTeamsAsync(ctx)
-    fixturesCh := c.Fixtures.GetAllFixturesAsync(ctx)
+	playersCh := c.Players.GetAllPlayersAsync(ctx)
+	teamsCh := c.Teams.GetAllTeamsAsync(ctx)
+	fixturesCh := c.Fixtures.GetAllFixturesAsync(ctx)
 
-    players := <-playersCh
-    teams := <-teamsCh
-    fixtures := <-fixturesCh
+	playersRes := <-playersCh
+	teamsRes := <-teamsCh
+	fixturesRes := <-fixturesCh
 
-    if players.Err != nil {
-        log.Fatal(players.Err)
-    }
-    if teams.Err != nil {
-        log.Fatal(teams.Err)
-    }
-    if fixtures.Err != nil {
-        log.Fatal(fixtures.Err)
-    }
+	if playersRes.Err != nil || teamsRes.Err != nil || fixturesRes.Err != nil {
+		log.Fatal("one or more requests failed")
+	}
 
-    fmt.Printf("players: %d, teams: %d, fixtures: %d\n",
-        len(players.Value), len(teams.Value), len(fixtures.Value))
+	fmt.Printf(
+		"Fetched %d players, %d teams, and %d fixtures concurrently!\n",
+		len(playersRes.Value),
+		len(teamsRes.Value),
+		len(fixturesRes.Value),
+	)
 }
 ```
 
-Available async helpers:
+### Configuration Options
 
-- `GetAllPlayersAsync(ctx)`
-- `GetPlayerHistoryAsync(ctx, playerID)`
-- `GetPlayerHistoriesBatch(ctx, ids)`
-- `GetAllTeamsAsync(ctx)`
-- `GetAllFixturesAsync(ctx)`
+```go
+c, err := client.NewClient(
+	client.WithTimeout(30*time.Second),
+	client.WithRateLimit(100, time.Minute),
+	client.WithBaseURL("https://custom-proxy.example/api"),
+)
+```
 
-## Cache
+## CI/CD
 
-Default cache is in-memory. Redis-backed caching is also supported when you want shared cache across multiple instances.
+The GitHub Actions pipeline now covers:
 
-## Examples
+- formatting, module tidy checks, vet, tests, and builds on pull requests and pushes
+- Docker image publishing to GHCR on `main` and version tags
+- optional deployment webhook triggering on `main`
 
-See `examples/` for working examples.
+Optional repository secrets:
+
+- `CODECOV_TOKEN`
+- `DEPLOY_WEBHOOK_URL`
+- `DEPLOY_WEBHOOK_TOKEN`
+
+## Project Structure
+
+- `client/`: main entry point and configuration
+- `endpoints/`: domain-specific service implementations
+- `models/`: data structures mapping to FPL API responses
+- `internal/cache/`: cache implementations
+- `examples/`: example programs
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md).
+Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## License
 
-[MIT](LICENSE)
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.

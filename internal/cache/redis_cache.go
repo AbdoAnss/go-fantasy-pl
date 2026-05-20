@@ -9,28 +9,28 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// RedisCache is a Cache implementation backed by Redis.
-// It is safe for concurrent use.
+// RedisCache is an implementation of the Cache interface backed by a Redis server.
+// It is ideal for distributed environments where multiple SDK instances need 
+// to share a common cache.
 type RedisCache struct {
 	client *redis.Client
 	prefix string
 }
 
-// RedisOptions configures a RedisCache.
+// RedisOptions defines the configuration parameters for connecting to a Redis server.
 type RedisOptions struct {
-	// Addr is the Redis server address in "host:port" form (default "localhost:6379").
+	// Addr is the Redis server address in "host:port" format (e.g., "localhost:6379").
 	Addr string
-	// Password is the Redis AUTH password. Leave empty for no authentication.
+	// Password is the authentication password for the Redis server.
 	Password string
-	// DB is the Redis database index to use (default 0).
+	// DB is the specific Redis database index to use.
 	DB int
-	// KeyPrefix is an optional prefix applied to every key to avoid collisions
-	// when multiple applications share the same Redis instance.
+	// KeyPrefix is an optional string prepended to all keys to avoid collisions
+	// in shared Redis environments.
 	KeyPrefix string
 }
 
-// NewRedisCache creates a RedisCache that connects to Redis using the supplied options.
-// It performs a PING to verify connectivity and returns an error on failure.
+// NewRedisCache initializes a new RedisCache and verifies the connection with a PING.
 func NewRedisCache(opts RedisOptions) (*RedisCache, error) {
 	if opts.Addr == "" {
 		opts.Addr = "localhost:6379"
@@ -52,8 +52,8 @@ func NewRedisCache(opts RedisOptions) (*RedisCache, error) {
 	return &RedisCache{client: rdb, prefix: opts.KeyPrefix}, nil
 }
 
-// NewRedisCacheWithClient creates a RedisCache using an already-constructed *redis.Client.
-// Useful for testing (e.g. with miniredis) or when finer-grained client configuration is required.
+// NewRedisCacheWithClient creates a RedisCache using an existing *redis.Client.
+// This is useful for advanced configurations or when using Redis mocks like miniredis.
 func NewRedisCacheWithClient(client *redis.Client, keyPrefix string) *RedisCache {
 	return &RedisCache{client: client, prefix: keyPrefix}
 }
@@ -65,7 +65,7 @@ func (r *RedisCache) prefixedKey(key string) string {
 	return r.prefix + ":" + key
 }
 
-// Set serializes value to JSON and stores it in Redis with the given TTL.
+// Set serializes the value to JSON and stores it in Redis with the provided TTL.
 func (r *RedisCache) Set(key string, value interface{}, ttl time.Duration) error {
 	data, err := json.Marshal(value)
 	if err != nil {
@@ -81,8 +81,8 @@ func (r *RedisCache) Set(key string, value interface{}, ttl time.Duration) error
 	return nil
 }
 
-// Get retrieves the value for key from Redis and deserializes it into dest.
-// Returns false if the key does not exist, has expired, or cannot be unmarshaled.
+// Get retrieves a value from Redis and unmarshals it into the destination object.
+// Returns false if the key is missing, expired, or data is corrupted.
 func (r *RedisCache) Get(key string, dest interface{}) bool {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -95,7 +95,7 @@ func (r *RedisCache) Get(key string, dest interface{}) bool {
 	return json.Unmarshal(data, dest) == nil
 }
 
-// Delete removes the key from Redis.
+// Delete removes a specific key from Redis.
 func (r *RedisCache) Delete(key string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -103,10 +103,8 @@ func (r *RedisCache) Delete(key string) {
 	r.client.Del(ctx, r.prefixedKey(key))
 }
 
-// Clear removes all keys that match the cache prefix from Redis.
-// If no prefix is configured, Clear is a no-op to prevent accidentally
-// flushing keys from other applications sharing the same Redis instance.
-// Always configure a KeyPrefix when using a shared Redis instance.
+// Clear removes all keys from Redis that match the configured prefix.
+// If no prefix is set, this operation is a no-op to prevent accidental data loss.
 func (r *RedisCache) Clear() {
 	if r.prefix == "" {
 		return
@@ -131,7 +129,7 @@ func (r *RedisCache) Clear() {
 	}
 }
 
-// Close closes the underlying Redis connection pool.
+// Close terminates the underlying Redis connection pool.
 func (r *RedisCache) Close() error {
 	return r.client.Close()
 }

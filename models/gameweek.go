@@ -4,16 +4,21 @@ import (
 	"time"
 )
 
+// ChipPlay represents statistics for a specific chip (e.g., "wildcard", "triple_captain")
+// played during a gameweek.
 type ChipPlay struct {
 	ChipName  string `json:"chip_name"`
 	NumPlayed int    `json:"num_played"`
 }
 
+// TopElementInfo identifies the highest-scoring player for a specific gameweek.
 type TopElementInfo struct {
 	ID     int `json:"id"`
 	Points int `json:"points"`
 }
 
+// GameWeek represents an FPL gameweek (referred to as an "event" in the API).
+// It includes deadlines, scoring averages, and status flags.
 type GameWeek struct {
 	ID                     int            `json:"id"`
 	Name                   string         `json:"name"`
@@ -42,6 +47,7 @@ type GameWeek struct {
 	MostViceCaptained      int            `json:"most_vice_captained"`
 }
 
+// GetChipPlayCount returns the number of times a specific chip was played during the gameweek.
 func (gw *GameWeek) GetChipPlayCount(chipName string) int {
 	for _, chipPlay := range gw.ChipPlays {
 		if chipPlay.ChipName == chipName {
@@ -51,10 +57,12 @@ func (gw *GameWeek) GetChipPlayCount(chipName string) int {
 	return 0
 }
 
+// IsFinished returns true if the gameweek's matches have all concluded and data is finalized.
 func (gw *GameWeek) IsFinished() bool {
 	return gw.Finished
 }
 
+// GetTopElementInfo returns details about the top-scoring player of the gameweek.
 func (gw *GameWeek) GetTopElementInfo() TopElementInfo {
 	return gw.TopElementInfo
 }

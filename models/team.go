@@ -1,5 +1,7 @@
 package models
 
+// Team represents a Premier League team in the FPL system.
+// It includes metadata, performance statistics, and strength ratings.
 type Team struct {
 	Code                int     `json:"code"`
 	Draw                int     `json:"draw"`
@@ -24,14 +26,17 @@ type Team struct {
 	PulseID             int     `json:"pulse_id"`
 }
 
+// GetShortName returns the 3-letter abbreviation of the team (e.g., "ARS").
 func (t *Team) GetShortName() string {
 	return t.ShortName
 }
 
+// GetFullName returns the full name of the team (e.g., "Arsenal").
 func (t *Team) GetFullName() string {
 	return t.Name
 }
 
+// GetWinRate calculates the percentage of games won by the team.
 func (t *Team) GetWinRate() float64 {
 	if t.Played == 0 {
 		return 0.0
@@ -39,6 +44,7 @@ func (t *Team) GetWinRate() float64 {
 	return float64(t.Win) / float64(t.Played) * 100
 }
 
+// GetDrawRate calculates the percentage of games drawn by the team.
 func (t *Team) GetDrawRate() float64 {
 	if t.Played == 0 {
 		return 0.0
@@ -46,6 +52,7 @@ func (t *Team) GetDrawRate() float64 {
 	return float64(t.Draw) / float64(t.Played) * 100
 }
 
+// GetLossRate calculates the percentage of games lost by the team.
 func (t *Team) GetLossRate() float64 {
 	if t.Played == 0 {
 		return 0.0
@@ -53,7 +60,7 @@ func (t *Team) GetLossRate() float64 {
 	return float64(t.Loss) / float64(t.Played) * 100
 }
 
-// This can be used to check if a team is top 4 for example.
+// IsTopTeam checks if the team is currently ranked within the top N positions.
 func (t *Team) IsTopTeam(topN int) bool {
 	position := t.Position
 	if position != 0 {

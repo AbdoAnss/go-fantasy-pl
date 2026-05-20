@@ -1,14 +1,32 @@
 package client
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
-	"github.com/AbdoAnss/go-fantasy-pl/internal/cache"
 	"github.com/alicebob/miniredis/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func newBootstrapServer() *httptest.Server {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/bootstrap-static/" {
+			http.NotFound(w, r)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{
+			"teams":[{"id":1,"name":"Arsenal","short_name":"ARS","code":3,"strength":5}],
+			"elements":[{"id":1,"web_name":"Player One","code":101}],
+			"events":[{"id":1,"is_current":true}],
+			"game_settings":{"league_join_private_max":20}
+		}`))
+	}))
+}
 
 func TestNewClient(t *testing.T) {
 	c, err := NewClient(
@@ -28,7 +46,7 @@ func TestNewClient_WithRedisCache(t *testing.T) {
 	defer mr.Close()
 
 	c, err := NewClient(
-		WithRedisCache(cache.RedisOptions{Addr: mr.Addr(), KeyPrefix: "test"}),
+		WithRedisCache(RedisOptions{Addr: mr.Addr(), KeyPrefix: "test"}),
 	)
 	require.NoError(t, err)
 	assert.NotNil(t, c)
@@ -36,7 +54,84 @@ func TestNewClient_WithRedisCache(t *testing.T) {
 
 func TestNewClient_WithRedisCache_UnreachableServer(t *testing.T) {
 	_, err := NewClient(
-		WithRedisCache(cache.RedisOptions{Addr: "localhost:19999"}),
+		WithRedisCache(RedisOptions{Addr: "localhost:19999"}),
 	)
 	assert.Error(t, err, "should fail when Redis server is unreachable")
+}
+
+func TestNewClient_DefaultCacheUsesRedisWhenAvailable(t *testing.T) {
+	mr, err := miniredis.Run()
+	require.NoError(t, err)
+	defer mr.Close()
+
+	server := newBootstrapServer()
+	defer server.Close()
+
+	t.Setenv("REDIS_ADDR", mr.Addr())
+	t.Setenv("REDIS_KEY_PREFIX", "default-cache")
+	t.Setenv("REDIS_PASSWORD", "")
+	t.Setenv("REDIS_DB", "0")
+	t.Setenv("FPL_CACHE_BACKEND", "")
+
+	c, err := NewClient(WithBaseURL(server.URL))
+	require.NoError(t, err)
+
+	teams, err := c.Bootstrap.GetTeams()
+	require.NoError(t, err)
+	require.Len(t, teams, 1)
+	assert.True(t, mr.Exists("default-cache:teams"))
+}
+
+func TestNewClient_DefaultCacheFallsBackToMemoryWhenRedisUnavailable(t *testing.T) {
+	server := newBootstrapServer()
+	defer server.Close()
+
+	t.Setenv("REDIS_ADDR", "localhost:19999")
+	t.Setenv("REDIS_KEY_PREFIX", "fallback-cache")
+	t.Setenv("REDIS_PASSWORD", "")
+	t.Setenv("REDIS_DB", "0")
+	t.Setenv("FPL_CACHE_BACKEND", "")
+
+	c, err := NewClient(WithBaseURL(server.URL))
+	require.NoError(t, err)
+
+	teams, err := c.Bootstrap.GetTeams()
+	require.NoError(t, err)
+	require.Len(t, teams, 1)
+}
+
+func TestNewClient_DefaultCache_StrictRedisModeReturnsError(t *testing.T) {
+	t.Setenv("REDIS_ADDR", "localhost:19999")
+	t.Setenv("REDIS_PASSWORD", "")
+	t.Setenv("REDIS_DB", "0")
+	t.Setenv("FPL_CACHE_BACKEND", "redis")
+
+	_, err := NewClient()
+	assert.Error(t, err, "should fail when strict Redis mode is enabled and Redis is unreachable")
+}
+
+func TestNewClient_WithMemoryCacheOverridesDefaultRedis(t *testing.T) {
+	mr, err := miniredis.Run()
+	require.NoError(t, err)
+	defer mr.Close()
+
+	server := newBootstrapServer()
+	defer server.Close()
+
+	t.Setenv("REDIS_ADDR", mr.Addr())
+	t.Setenv("REDIS_KEY_PREFIX", "memory-override")
+	t.Setenv("REDIS_PASSWORD", "")
+	t.Setenv("REDIS_DB", "0")
+	t.Setenv("FPL_CACHE_BACKEND", "")
+
+	c, err := NewClient(
+		WithBaseURL(server.URL),
+		WithMemoryCache(),
+	)
+	require.NoError(t, err)
+
+	teams, err := c.Bootstrap.GetTeams()
+	require.NoError(t, err)
+	require.Len(t, teams, 1)
+	assert.False(t, mr.Exists("memory-override:teams"))
 }
