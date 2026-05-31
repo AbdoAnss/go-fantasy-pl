@@ -8,15 +8,14 @@ import (
 )
 
 // TeamService provides access to team-related data from the FPL API.
-// Teams have attributes including ID, name, strength ratings (overall/attack/defense)
-// for both home and away matches. Note that some stats (points, played, wins, etc.)
-// may be zero, especially early in the season.
-
+// Teams include attributes such as ID, name, and strength ratings for both 
+// home and away matches.
 type TeamService struct {
 	client           api.Client
 	bootstrapService *BootstrapService
 }
 
+// NewTeamService creates a new instance of the TeamService.
 func NewTeamService(client api.Client, bootstrap *BootstrapService) *TeamService {
 	return &TeamService{
 		client:           client,
@@ -24,10 +23,13 @@ func NewTeamService(client api.Client, bootstrap *BootstrapService) *TeamService
 	}
 }
 
+// GetAllTeams returns a list of all Premier League teams participating in the FPL season.
+// This is a convenience wrapper around BootstrapService.GetTeams.
 func (ts *TeamService) GetAllTeams() ([]models.Team, error) {
 	return ts.bootstrapService.GetTeams()
 }
 
+// GetTeam returns a single team by its unique FPL ID.
 func (ts *TeamService) GetTeam(id int) (*models.Team, error) {
 	teams, err := ts.GetAllTeams()
 	if err != nil {

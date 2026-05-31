@@ -1,3 +1,6 @@
+// Package client provides the main entry point for the Fantasy Premier League SDK.
+// It includes the Client struct which handles authentication, rate limiting, and
+// initializes all domain-specific services.
 package client
 
 import (
@@ -10,27 +13,39 @@ import (
 )
 
 const (
-	baseURL        = "https://fantasy.premierleague.com/api"
+	// baseURL is the primary entry point for the official FPL API.
+	baseURL = "https://fantasy.premierleague.com/api"
+	// defaultTimeout is the default HTTP timeout used if none is specified.
 	defaultTimeout = 10 * time.Second
 )
 
+// Client is the main SDK client used to interact with the FPL API.
+// It coordinates services, manages rate limiting, and handles HTTP communication.
 type Client struct {
 	httpClient *http.Client
 	baseURL    string
 	rateLimit  *rateLimiter
-	cacheErr   error // set when a cache option fails (e.g. Redis unreachable)
+	cacheErr   error // stores errors from cache configuration to be returned by NewClient
+	cacheSet   bool
 
-	// core service
+	// Bootstrap provides access to core FPL data like players, teams, and gameweeks.
 	Bootstrap *endpoints.BootstrapService
 
-	// services
-	Players  *endpoints.PlayerService
+	// Players provides methods for fetching player-specific data and history.
+	Players *endpoints.PlayerService
+	// Fixtures provides methods for fetching match fixtures and results.
 	Fixtures *endpoints.FixtureService
-	Teams    *endpoints.TeamService
+	// Teams provides methods for fetching information about Premier League teams.
+	Teams *endpoints.TeamService
+	// Managers provides methods for fetching manager-specific data and history.
 	Managers *endpoints.ManagerService
-	Leagues  *endpoints.LeagueService
+	// Leagues provides methods for fetching league standings and details.
+	Leagues *endpoints.LeagueService
 }
 
+// NewClient creates and returns a new FPL API client.
+// It accepts functional options to configure the client's behavior,
+// such as custom HTTP clients, timeouts, and caching strategies.
 func NewClient(opts ...Option) (*Client, error) {
 	c := &Client{
 		httpClient: &http.Client{
@@ -56,20 +71,26 @@ func NewClient(opts ...Option) (*Client, error) {
 		return nil, fmt.Errorf("client: cache configuration failed: %w", c.cacheErr)
 	}
 
+	if !c.cacheSet {
+		if err := configureDefaultCache(); err != nil {
+			return nil, fmt.Errorf("client: cache configuration failed: %w", err)
+		}
+	}
+
 	// Bootstrap service
 	c.Bootstrap = endpoints.NewBootstrapService(c)
 
-	// services dependant on bootstrap:
+	// Initialize domain-specific services
 	c.Players = endpoints.NewPlayerService(c, c.Bootstrap)
 	c.Teams = endpoints.NewTeamService(c, c.Bootstrap)
 	c.Managers = endpoints.NewManagerService(c, c.Bootstrap)
-	// standalone services
 	c.Fixtures = endpoints.NewFixtureService(c)
 	c.Leagues = endpoints.NewLeagueService(c)
 
 	return c, nil
 }
 
+// Get performs a rate-limited GET request to the specified endpoint relative to the baseURL.
 func (c *Client) Get(endpoint string) (*http.Response, error) {
 	c.rateLimit.Wait()
 	url := c.baseURL + endpoint
@@ -80,6 +101,7 @@ func (c *Client) Get(endpoint string) (*http.Response, error) {
 	return resp, nil
 }
 
+// GetContext performs a rate-limited GET request with a context to the specified endpoint.
 func (c *Client) GetContext(ctx context.Context, endpoint string) (*http.Response, error) {
 	c.rateLimit.Wait()
 	url := c.baseURL + endpoint

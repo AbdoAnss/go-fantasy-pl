@@ -1,3 +1,5 @@
+// Package endpoints implements domain-specific services for interacting with
+// various FPL API endpoints.
 package endpoints
 
 import (
@@ -15,7 +17,7 @@ const (
 )
 
 var (
-	sharedCache       cache.Cache = cache.NewMemoryCache()
+	sharedCache       cache.Cache = newSharedMemoryCache()
 	teamsCacheTTL                 = 24 * time.Hour   // Teams rarely change
 	playersCacheTTL               = 10 * time.Minute // Players update more frequently (injuries, etc)
 	fixturesCacheTTL              = 10 * time.Minute
@@ -25,18 +27,25 @@ var (
 	leagueCacheTTL                = 5 * time.Minute // Leagues update frequently
 )
 
-func init() {
-	if mc, ok := sharedCache.(*cache.MemoryCache); ok {
-		mc.StartCleanupTask(5 * time.Minute)
-	}
+func newSharedMemoryCache() *cache.MemoryCache {
+	mc := cache.NewMemoryCache()
+	mc.StartCleanupTask(5 * time.Minute)
+	return mc
 }
 
 // SetSharedCache replaces the cache used by all endpoint services.
-// Call this before creating any client instances, typically via client.WithRedisCache.
+// This is used globally by the SDK to ensure consistent caching across services.
 func SetSharedCache(c cache.Cache) {
+	if c == nil {
+		c = newSharedMemoryCache()
+	}
+	if mc, ok := c.(*cache.MemoryCache); ok {
+		mc.StartCleanupTask(5 * time.Minute)
+	}
 	sharedCache = c
 }
 
+// Response represents the full JSON response from the /bootstrap-static/ endpoint.
 type Response struct {
 	Teams    []models.Team       `json:"teams"`
 	Elements []models.Player     `json:"elements"`
@@ -44,16 +53,21 @@ type Response struct {
 	Settings models.GameSettings `json:"game_settings"`
 }
 
+// BootstrapService provides access to the /bootstrap-static/ endpoint,
+// which contains the majority of the static data for the current FPL season.
 type BootstrapService struct {
 	client api.Client
 }
 
+// NewBootstrapService creates a new instance of the BootstrapService.
 func NewBootstrapService(client api.Client) *BootstrapService {
 	return &BootstrapService{
 		client: client,
 	}
 }
 
+// GetTeams returns a list of all Premier League teams.
+// Results are cached for 24 hours by default.
 func (bs *BootstrapService) GetTeams() ([]models.Team, error) {
 	const cacheKey = "teams"
 	var teams []models.Team
@@ -75,6 +89,8 @@ func (bs *BootstrapService) GetTeams() ([]models.Team, error) {
 	return data.Teams, nil
 }
 
+// GetPlayers returns a list of all Premier League players (elements).
+// Results are cached for 10 minutes by default.
 func (bs *BootstrapService) GetPlayers() ([]models.Player, error) {
 	const cacheKey = "players"
 	var players []models.Player
@@ -96,6 +112,8 @@ func (bs *BootstrapService) GetPlayers() ([]models.Player, error) {
 	return data.Elements, nil
 }
 
+// GetGameWeeks returns a list of all gameweeks (events) for the season.
+// Results are cached for 3 minutes by default.
 func (bs *BootstrapService) GetGameWeeks() ([]models.GameWeek, error) {
 	const cacheKey = "gameweeks"
 	var gw []models.GameWeek

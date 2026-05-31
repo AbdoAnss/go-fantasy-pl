@@ -1,39 +1,77 @@
-name: Go CI
+name: CI/CD
 
 on:
-  push:
-    branches:
-      - main
   pull_request:
     branches:
       - main
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-cd-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  test:
-    name: Test & Lint
+  verify:
+    name: Verify
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Checkout code
-        uses: actions/checkout@main
+        uses: actions/checkout@v4
 
       - name: Set up Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
-          go-version: '1.21'
+          go-version-file: go.mod
           cache: true
 
-      - name: Install dependencies
-        run: go mod tidy
+      - name: Download dependencies
+        run: go mod download
 
-      - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v3
-        with:
-          version: latest
+      - name: Verify module files are tidy
+        shell: bash
+        run: |
+          go mod tidy
+          git diff --exit-code -- go.mod go.sum
+
+      - name: Verify module checksums
+        run: go mod verify
+
+      - name: Check formatting
+        shell: bash
+        run: |
+          files="$(gofmt -l .)"
+          if [[ -n "$files" ]]; then
+            echo "The following files are not formatted:"
+            echo "$files"
+            exit 1
+          fi
+
+      - name: Run vet
+        run: go vet ./...
 
       - name: Run tests with coverage
         run: go test -race -coverprofile=coverage.out -covermode=atomic ./...
 
+      - name: Build
+        run: go build ./...
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage.out
+
       - name: Upload coverage to Codecov
+        if: ${{ secrets.CODECOV_TOKEN != '' }}
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -41,33 +79,81 @@ jobs:
           flags: unittests
           name: go-fantasy-pl
           fail_ci_if_error: true
-          verbose: true
 
-  verify:
-    name: Verify
+  docker:
+    name: Build and Publish Image
+    if: ${{ github.event_name != 'pull_request' }}
+    needs: verify
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+    env:
+      IMAGE_NAME: ghcr.io/${{ github.repository }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@main
+        uses: actions/checkout@v4
 
-      - name: Set up Go
-        uses: actions/setup-go@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
         with:
-          go-version: '1.21'
-          cache: true
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Verify dependencies
-        run: go mod verify
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=tag
+            type=sha
+            type=raw,value=latest,enable={{is_default_branch}}
 
-      - name: Build
-        run: go build -v ./...
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-      - name: Run vet
-        run: go vet ./...
+  deploy:
+    name: Trigger Deployment
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    needs: docker
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      DEPLOY_WEBHOOK_URL: ${{ secrets.DEPLOY_WEBHOOK_URL }}
+      DEPLOY_WEBHOOK_TOKEN: ${{ secrets.DEPLOY_WEBHOOK_TOKEN }}
+    steps:
+      - name: Skip deployment when webhook is not configured
+        if: ${{ env.DEPLOY_WEBHOOK_URL == '' }}
+        run: echo "DEPLOY_WEBHOOK_URL is not configured; skipping deployment trigger."
 
-      - name: Check format
+      - name: Trigger deployment webhook
+        if: ${{ env.DEPLOY_WEBHOOK_URL != '' }}
+        shell: bash
         run: |
-          if [ -n "$(go fmt ./...)" ]; then
-            echo "Code is not formatted, run 'go fmt ./...'"
-            exit 1
+          set -euo pipefail
+
+          auth_args=()
+          if [[ -n "${DEPLOY_WEBHOOK_TOKEN}" ]]; then
+            auth_args=(-H "Authorization: Bearer ${DEPLOY_WEBHOOK_TOKEN}")
           fi
+
+          curl --fail --show-error --silent \
+            -X POST \
+            -H "Content-Type: application/json" \
+            "${auth_args[@]}" \
+            -d "{\"repository\":\"${GITHUB_REPOSITORY}\",\"ref\":\"${GITHUB_REF}\",\"sha\":\"${GITHUB_SHA}\"}" \
+            "${DEPLOY_WEBHOOK_URL}"

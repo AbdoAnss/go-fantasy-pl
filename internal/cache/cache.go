@@ -1,3 +1,5 @@
+// Package cache provides caching abstractions and implementations for the FPL SDK.
+// It includes a high-performance in-memory cache and support for Redis.
 package cache
 
 import (
@@ -7,15 +9,15 @@ import (
 	"time"
 )
 
-// Cache defines the interface for all cache implementations.
-// Implementations must be safe for concurrent use.
+// Cache defines the standard interface for all cache implementations used by the SDK.
+// Implementations must be safe for concurrent use across multiple goroutines.
 type Cache interface {
-	// Get retrieves a value from the cache and unmarshals it into dest.
+	// Get retrieves a value from the cache by key and unmarshals it into dest.
 	// Returns true if the key exists and has not expired, false otherwise.
 	Get(key string, dest interface{}) bool
-	// Set stores a value in the cache with the given TTL.
+	// Set serializes a value and stores it in the cache with the specified TTL.
 	Set(key string, value interface{}, ttl time.Duration) error
-	// Delete removes a key from the cache.
+	// Delete removes a specific key from the cache.
 	Delete(key string)
 	// Clear removes all keys from the cache.
 	Clear()
@@ -26,21 +28,22 @@ type item struct {
 	expiration time.Time
 }
 
-// MemoryCache is an in-memory Cache implementation backed by a map.
-// It is safe for concurrent use.
+// MemoryCache is an in-memory implementation of the Cache interface.
+// It uses a map with a read-write mutex for thread-safe access.
 type MemoryCache struct {
-	items map[string]item
-	mu    sync.RWMutex
+	items       map[string]item
+	mu          sync.RWMutex
+	cleanupOnce sync.Once
 }
 
-// NewMemoryCache creates a new in-memory cache.
+// NewMemoryCache initializes and returns a new MemoryCache.
 func NewMemoryCache() *MemoryCache {
 	return &MemoryCache{
 		items: make(map[string]item),
 	}
 }
 
-// Set serializes value to JSON and stores it with the given TTL.
+// Set serializes the provided value to JSON and stores it with the given TTL.
 func (c *MemoryCache) Set(key string, value interface{}, ttl time.Duration) error {
 	data, err := json.Marshal(value)
 	if err != nil {
@@ -57,8 +60,8 @@ func (c *MemoryCache) Set(key string, value interface{}, ttl time.Duration) erro
 	return nil
 }
 
-// Get deserializes the cached value into dest.
-// Returns false if the key does not exist or has expired.
+// Get retrieves and deserializes the cached value into the destination object.
+// Returns false if the key does not exist or has already expired.
 func (c *MemoryCache) Get(key string, dest interface{}) bool {
 	c.mu.RLock()
 	it, exists := c.items[key]
@@ -90,7 +93,7 @@ func (c *MemoryCache) Clear() {
 	c.items = make(map[string]item)
 }
 
-// Cleanup removes all expired items from the cache.
+// Cleanup removes all expired items from the cache to reclaim memory.
 func (c *MemoryCache) Cleanup() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -103,12 +106,14 @@ func (c *MemoryCache) Cleanup() {
 	}
 }
 
-// StartCleanupTask starts a goroutine that periodically removes expired items.
+// StartCleanupTask launches a background goroutine that periodically calls Cleanup.
 func (c *MemoryCache) StartCleanupTask(interval time.Duration) {
-	ticker := time.NewTicker(interval)
-	go func() {
-		for range ticker.C {
-			c.Cleanup()
-		}
-	}()
+	c.cleanupOnce.Do(func() {
+		ticker := time.NewTicker(interval)
+		go func() {
+			for range ticker.C {
+				c.Cleanup()
+			}
+		}()
+	})
 }

@@ -1,4 +1,3 @@
-// Package endpoints provides access to the Fantasy Premier League API
 package endpoints
 
 import (
@@ -17,11 +16,13 @@ const (
 	managerGameWeekPicksEndpoint = "/entry/%d/event/%d/picks/"
 )
 
+// ManagerService provides methods for fetching data about FPL managers (entries).
 type ManagerService struct {
 	client           api.Client
 	bootstrapService *BootstrapService
 }
 
+// NewManagerService creates a new instance of the ManagerService.
 func NewManagerService(client api.Client, bootstrap *BootstrapService) *ManagerService {
 	return &ManagerService{
 		client:           client,
@@ -39,6 +40,7 @@ func (ms *ManagerService) validateManager(manager *models.Manager) error {
 	return nil
 }
 
+// GetManager returns basic information about an FPL manager by their unique entry ID.
 func (ms *ManagerService) GetManager(id int) (*models.Manager, error) {
 	cacheKey := fmt.Sprintf("manager_%d", id)
 	var manager models.Manager
@@ -81,6 +83,7 @@ func (ms *ManagerService) GetManager(id int) (*models.Manager, error) {
 	return &manager, nil
 }
 
+// GetCurrentTeam returns the current team selection (picks) for a manager.
 func (ms *ManagerService) GetCurrentTeam(managerID int) (*models.ManagerTeam, error) {
 	cacheKey := fmt.Sprintf("manager_team_%d", managerID)
 	var team models.ManagerTeam
@@ -114,6 +117,7 @@ func (ms *ManagerService) GetCurrentTeam(managerID int) (*models.ManagerTeam, er
 	return &team, nil
 }
 
+// GetManagerHistory returns the season-by-season and gameweek-by-gameweek history for a manager.
 func (ms *ManagerService) GetManagerHistory(id int) (*models.ManagerHistory, error) {
 	cacheKey := fmt.Sprintf("manager_history_%d", id)
 	var managerHistory models.ManagerHistory
