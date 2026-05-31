@@ -18,38 +18,38 @@ func main() {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	playerID := 328 // Salah's ID
-
-	fmt.Printf("Getting player details and history for ID %d...\n", playerID)
 	playersResult := <-c.Players.GetAllPlayersAsync(ctx)
-	historyResult := <-c.Players.GetPlayerHistoryAsync(ctx, playerID)
 
 	if playersResult.Err != nil {
 		log.Fatalf("Failed to get players: %v", playersResult.Err)
 	}
 
-	var found bool
-	for _, player := range playersResult.Value {
-		if player.ID != playerID {
-			continue
+	if len(playersResult.Value) == 0 {
+		log.Fatal("No players returned by the API")
+	}
+
+	player := playersResult.Value[0]
+	for _, candidate := range playersResult.Value[1:] {
+		if candidate.TotalPoints > player.TotalPoints {
+			player = candidate
 		}
-		found = true
-		fmt.Println(separator)
-		fmt.Printf("Mo Salah Details:\n")
-		fmt.Printf("Full Name: %s\n", player.GetDisplayName())
-		fmt.Printf("Current Price: £%.1f\n", player.GetPriceInPounds())
-		fmt.Printf("Total Points: %d\n", player.TotalPoints)
-		fmt.Printf("Form: %s\n", player.Form)
-		fmt.Println(separator)
-		break
 	}
-	if !found {
-		log.Printf("Warning: Could not find player with ID %d\n", playerID)
-	}
+
+	fmt.Printf("Getting player details and history for %s (ID %d)...\n", player.GetDisplayName(), player.ID)
+	historyResult := <-c.Players.GetPlayerHistoryAsync(ctx, player.ID)
 
 	if historyResult.Err != nil {
 		log.Fatalf("Failed to get player history: %v", historyResult.Err)
 	}
+
+	fmt.Println(separator)
+	fmt.Printf("Player Details:\n")
+	fmt.Printf("Full Name: %s\n", player.GetDisplayName())
+	fmt.Printf("Current Price: £%.1f\n", player.GetPriceInPounds())
+	fmt.Printf("Total Points: %d\n", player.TotalPoints)
+	fmt.Printf("Form: %s\n", player.Form)
+	fmt.Println(separator)
+
 	history := historyResult.Value
 	// Current season games
 	fmt.Printf("\nLast 3 games:\n")

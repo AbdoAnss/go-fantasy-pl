@@ -7,20 +7,9 @@ import (
 	"time"
 
 	"github.com/AbdoAnss/go-fantasy-pl/client"
-	"github.com/AbdoAnss/go-fantasy-pl/models"
 )
 
 const separator = "----------------------------------------"
-
-func findTeam(teams []models.Team, teamID int) (models.Team, bool) {
-	for _, team := range teams {
-		if team.ID == teamID {
-			return team, true
-		}
-	}
-
-	return models.Team{}, false
-}
 
 func main() {
 	c, err := client.NewClient()
@@ -30,21 +19,26 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	teamID := 8 // Example team ID : Everton
-
 	// Get team details through the async teams list endpoint
-	fmt.Printf("Getting team details for ID %d...\n", teamID)
 	teamsResult := <-c.Teams.GetAllTeamsAsync(ctx)
 	if teamsResult.Err != nil {
 		log.Printf("Warning: Could not get teams: %v\n", teamsResult.Err)
 		return
 	}
 
-	team, found := findTeam(teamsResult.Value, teamID)
-	if !found {
-		log.Printf("Warning: Could not find team with ID %d\n", teamID)
+	if len(teamsResult.Value) == 0 {
+		log.Print("Warning: no teams returned by the API")
 		return
 	}
+
+	team := teamsResult.Value[0]
+	for _, candidate := range teamsResult.Value[1:] {
+		if candidate.Strength > team.Strength {
+			team = candidate
+		}
+	}
+
+	fmt.Printf("Showing current strongest team: %s (ID %d)\n", team.GetFullName(), team.ID)
 
 	fmt.Println(separator)
 	fmt.Printf("Team ID: %d\n", team.ID)
