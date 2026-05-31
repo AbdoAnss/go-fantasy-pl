@@ -1,0 +1,56 @@
+[
+  {
+    "code": 7001,
+    "event": 1,
+    "finished": true,
+    "finished_provisional": true,
+    "id": 1001,
+    "kickoff_time": "2026-08-16T19:00:00Z",
+    "minutes": 90,
+    "provisional_start_time": false,
+    "started": true,
+    "team_a": 2,
+    "team_a_score": 1,
+    "team_h": 1,
+    "team_h_score": 2,
+    "stats": [
+      {
+        "identifier": "goals_scored",
+        "a": [{"value": 1, "element": 102}],
+        "h": [{"value": 2, "element": 101}]
+      },
+      {
+        "identifier": "assists",
+        "a": [],
+        "h": [{"value": 1, "element": 103}]
+      },
+      {
+        "identifier": "bonus",
+        "a": [{"value": 2, "element": 102}],
+        "h": [{"value": 3, "element": 101}]
+      }
+    ],
+    "team_h_difficulty": 3,
+    "team_a_difficulty": 4,
+    "pulse_id": 501
+  },
+  {
+    "code": 7002,
+    "event": 2,
+    "finished": false,
+    "finished_provisional": false,
+    "id": 1002,
+    "kickoff_time": "2026-08-23T14:00:00Z",
+    "minutes": 0,
+    "provisional_start_time": false,
+    "started": false,
+    "team_a": 3,
+    "team_a_score": null,
+    "team_h": 2,
+    "team_h_score": null,
+    "stats": [],
+    "team_h_difficulty": 2,
+    "team_a_difficulty": 4,
+    "pulse_id": 502
+  }
+]

@@ -100,10 +100,15 @@ func TestRedisCache_NewRedisCache_ConnectionError(t *testing.T) {
 }
 
 func TestRedisCache_NewRedisCache_Defaults(t *testing.T) {
-	// We can't connect to a real Redis, but we can confirm the constructor
-	// returns an error (rather than panicking) when no server is reachable.
-	_, err := cache.NewRedisCache(cache.RedisOptions{})
-	assert.Error(t, err, "should fail when default Redis address is not reachable")
+	c, err := cache.NewRedisCache(cache.RedisOptions{})
+	if err != nil {
+		assert.Nil(t, c)
+		assert.Contains(t, err.Error(), "localhost:6379")
+		return
+	}
+
+	require.NotNil(t, c)
+	assert.NoError(t, c.Close())
 }
 
 func TestRedisCache_Close(t *testing.T) {

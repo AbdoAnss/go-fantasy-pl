@@ -3,64 +3,42 @@ package endpoints_test
 import (
 	"testing"
 
-	"github.com/AbdoAnss/go-fantasy-pl/client"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-var teamID = 13 // Example team ID: MAN CITY
-
-var testTeamClient *client.Client
-
-func init() {
-	var err error
-	testTeamClient, err = client.NewClient()
-	if err != nil {
-		panic(err)
-	}
-}
-
 func TestGetAllTeams(t *testing.T) {
-	teams, err := testTeamClient.Teams.GetAllTeams()
-	assert.NoError(t, err, "expected no error when getting all teams")
-	assert.NotEmpty(t, teams, "expected teams to be returned from API")
+	c, server := newEndpointTestClient(t)
+	defer server.Close()
 
-	// Note: Stats like points, wins, draws, losses are typically 0 at season start
-	// or during pre-season. Use strength ratings for consistent team comparisons.
-	for i, team := range teams {
-		t.Logf("Team %d: %s, Short name: %s, Code: %d, Strength: %d",
-			i+1,
-			team.GetFullName(),
-			team.GetShortName(),
-			team.Code,
-			team.Strength)
+	teams, err := c.Teams.GetAllTeams()
+	require.NoError(t, err)
+	require.Len(t, teams, 3)
 
-		assert.NotEmpty(t, team.Name, "expected team name to be non-empty")
-		assert.GreaterOrEqual(t, team.Strength, 0, "expected team strength to be non-negative")
-
-		if i >= 3 {
-			break
-		}
-	}
+	assert.Equal(t, "Arsenal", teams[0].GetFullName())
+	assert.Equal(t, "ARS", teams[0].GetShortName())
+	assert.Equal(t, 5, teams[0].Strength)
 }
 
 func TestGetTeam(t *testing.T) {
-	team, err := testTeamClient.Teams.GetTeam(teamID)
-	assert.NoError(t, err, "expected no error when getting team")
-	assert.NotNil(t, team, "expected team to be returned, got nil")
+	c, server := newEndpointTestClient(t)
+	defer server.Close()
 
-	t.Logf("----------------------------------------")
-	t.Logf("Team: %s", team.GetShortName())
-	t.Logf("Team ID: %d", team.ID)
-	t.Logf("Strength Ratings:")
-	t.Logf("  Overall: %d", team.Strength)
-	t.Logf("  Home Attack: %d", team.StrengthAttackHome)
-	t.Logf("  Home Defense: %d", team.StrengthDefenceHome)
-	t.Logf("  Away Attack: %d", team.StrengthAttackAway)
-	t.Logf("  Away Defense: %d", team.StrengthDefenceAway)
+	team, err := c.Teams.GetTeam(2)
+	require.NoError(t, err)
+	require.NotNil(t, team)
 
-	// Performance stats may be 0 depending on season timing
-	t.Logf("\nSeason Stats (may be 0 during pre-season or start of season):")
-	t.Logf("  Points: %d", team.Points)
-	t.Logf("  Position: %d", team.Position)
-	t.Logf("  W/D/L: %d/%d/%d", team.Win, team.Draw, team.Loss)
+	assert.Equal(t, "Manchester City", team.GetFullName())
+	assert.Equal(t, 4, team.Strength)
+	assert.Equal(t, 75.0, team.GetWinRate())
+}
+
+func TestGetTeam_NotFound(t *testing.T) {
+	c, server := newEndpointTestClient(t)
+	defer server.Close()
+
+	team, err := c.Teams.GetTeam(9999)
+	require.Error(t, err)
+	assert.Nil(t, team)
+	assert.Equal(t, "team with ID 9999 not found", err.Error())
 }

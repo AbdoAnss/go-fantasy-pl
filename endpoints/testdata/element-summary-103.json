@@ -1,0 +1,39 @@
+{
+  "fixtures": [],
+  "history": [
+    {
+      "element": 103,
+      "fixture": 1001,
+      "opponent_team": 1,
+      "total_points": 10,
+      "was_home": false,
+      "kickoff_time": "2026-08-16T19:00:00Z",
+      "team_h_score": 2,
+      "team_a_score": 2,
+      "round": 1,
+      "minutes": 90,
+      "goals_scored": 1,
+      "assists": 1,
+      "clean_sheets": 0,
+      "goals_conceded": 2,
+      "own_goals": 0,
+      "penalties_saved": 0,
+      "penalties_missed": 0,
+      "yellow_cards": 0,
+      "red_cards": 0,
+      "saves": 0,
+      "bonus": 3,
+      "bps": 29,
+      "influence": "42.0",
+      "creativity": "35.0",
+      "threat": "40.0",
+      "ict_index": "11.7",
+      "starts": 1,
+      "expected_goals": "0.6",
+      "expected_assists": "0.5",
+      "expected_goal_involvements": "1.1",
+      "expected_goals_conceded": "1.1"
+    }
+  ],
+  "history_past": []
+}

@@ -2,125 +2,87 @@ package endpoints_test
 
 import (
 	"testing"
+	"time"
 
-	"github.com/AbdoAnss/go-fantasy-pl/client"
-	"github.com/AbdoAnss/go-fantasy-pl/endpoints"
-	"github.com/AbdoAnss/go-fantasy-pl/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-var fixtureID int
-
-func setupFixtureTestService() *endpoints.FixtureService {
-	c, err := client.NewClient()
-	if err != nil {
-		panic(err)
-	}
-	fixtureID = 8
-	return endpoints.NewFixtureService(c)
-}
-
-// Helper function to get team map
-func getTeamMap(t *testing.T, c *client.Client) map[int]*models.Team {
-	teams, err := c.Bootstrap.GetTeams()
-	if err != nil {
-		t.Fatalf("Failed to get teams: %v", err)
-	}
-
-	teamMap := make(map[int]*models.Team)
-	for _, team := range teams {
-		// Create a new variable for each team to ensure we're not capturing the loop variable
-		team := team
-		teamMap[team.ID] = &team
-	}
-	return teamMap
-}
-
 func TestGetAllFixtures(t *testing.T) {
-	c, err := client.NewClient()
+	c, server := newEndpointTestClient(t)
+	defer server.Close()
+
+	fixtures, err := c.Fixtures.GetAllFixtures()
 	require.NoError(t, err)
-	fs := endpoints.NewFixtureService(c)
+	require.Len(t, fixtures, 2)
 
-	// Get team mappings for better readability
-	teamMap := getTeamMap(t, c)
-
-	fixtures, err := fs.GetAllFixtures()
-	assert.NoError(t, err, "expected no error when getting all fixtures")
-	assert.NotEmpty(t, fixtures, "expected fixtures to be returned from API")
-
-	t.Logf("Retrieved %d fixtures from the API.", len(fixtures))
-
-	for i, fixture := range fixtures {
-		homeTeam := "Unknown"
-		awayTeam := "Unknown"
-
-		if home, ok := teamMap[fixture.TeamH]; ok {
-			homeTeam = home.GetShortName()
-		}
-		if away, ok := teamMap[fixture.TeamA]; ok {
-			awayTeam = away.GetShortName()
-		}
-
-		t.Logf("Fixture %d: ID: %d, %s vs %s",
-			i+1,
-			fixture.ID,
-			homeTeam,
-			awayTeam)
-
-		if i >= 3 {
-			break
-		}
-	}
+	assert.Equal(t, 1001, fixtures[0].ID)
+	require.NotNil(t, fixtures[0].Event)
+	assert.Equal(t, 1, *fixtures[0].Event)
 }
 
 func TestGetFixture(t *testing.T) {
-	fs := setupFixtureTestService()
-	fixture, err := fs.GetFixture(fixtureID)
-	assert.NoError(t, err, "expected no error when getting fixture")
-	assert.NotNil(t, fixture, "expected fixture to be returned, got nil")
-	// Log fixture details
-	t.Logf("Fixture ID: %d", fixture.ID)
-	t.Logf("Team A: %d vs Team H: %d", fixture.TeamA, fixture.TeamH)
-	t.Logf("Fixture Finished: %v", fixture.Finished)
-	t.Logf("Kickoff Time: %v", fixture.KickoffTime)
+	c, server := newEndpointTestClient(t)
+	defer server.Close()
+
+	fixture, err := c.Fixtures.GetFixture(1001)
+	require.NoError(t, err)
+	require.NotNil(t, fixture)
+
+	assert.Equal(t, 1, fixture.TeamH)
+	assert.Equal(t, 2, fixture.TeamA)
+	assert.True(t, fixture.Started)
+	assert.True(t, fixture.Finished)
+	require.NotNil(t, fixture.KickoffTime)
+	assert.Equal(t, time.Date(2026, time.August, 16, 19, 0, 0, 0, time.UTC), *fixture.KickoffTime)
 }
 
 func TestGetNonExistentFixture(t *testing.T) {
-	fs := setupFixtureTestService()
-	fixture, err := fs.GetFixture(999)
-	assert.Error(t, err, "expected an error when getting a non-existent fixture")
-	assert.Nil(t, fixture, "expected fixture to be nil for non-existent fixture")
+	c, server := newEndpointTestClient(t)
+	defer server.Close()
+
+	fixture, err := c.Fixtures.GetFixture(999)
+	require.Error(t, err)
+	assert.Nil(t, fixture)
 	assert.Equal(t, "fixture with ID 999 not found", err.Error())
-	t.Logf("Error encountered: %s", err.Error())
 }
 
 func TestGetGoalscorers(t *testing.T) {
-	fs := setupFixtureTestService()
-	fixture, err := fs.GetFixture(fixtureID)
-	assert.NoError(t, err, "expected no error when getting fixture")
-	assert.NotNil(t, fixture, "expected fixture to be returned, got nil")
+	c, server := newEndpointTestClient(t)
+	defer server.Close()
+
+	fixture, err := c.Fixtures.GetFixture(1001)
+	require.NoError(t, err)
+
 	goalscorers, err := fixture.GetGoalscorers()
-	assert.NoError(t, err, "expected no error when getting goalscorers")
-	t.Logf("Goalscorers: %+v", goalscorers)
+	require.NoError(t, err)
+	assert.Len(t, goalscorers["h"], 1)
+	assert.Len(t, goalscorers["a"], 1)
+	assert.Equal(t, 101, goalscorers["h"][0].Element)
 }
 
 func TestGetAssisters(t *testing.T) {
-	fs := setupFixtureTestService()
-	fixture, err := fs.GetFixture(fixtureID)
-	assert.NoError(t, err, "expected no error when getting fixture")
-	assert.NotNil(t, fixture, "expected fixture to be returned, got nil")
+	c, server := newEndpointTestClient(t)
+	defer server.Close()
+
+	fixture, err := c.Fixtures.GetFixture(1001)
+	require.NoError(t, err)
+
 	assisters, err := fixture.GetAssisters()
-	assert.NoError(t, err, "expected no error when getting assisters")
-	t.Logf("Assisters: %+v", assisters)
+	require.NoError(t, err)
+	assert.Len(t, assisters["h"], 1)
+	assert.Equal(t, 103, assisters["h"][0].Element)
 }
 
 func TestGetBonus(t *testing.T) {
-	fs := setupFixtureTestService()
-	fixture, err := fs.GetFixture(fixtureID)
-	assert.NoError(t, err, "expected no error when getting fixture")
-	assert.NotNil(t, fixture, "expected fixture to be returned, got nil")
+	c, server := newEndpointTestClient(t)
+	defer server.Close()
+
+	fixture, err := c.Fixtures.GetFixture(1001)
+	require.NoError(t, err)
+
 	bonus, err := fixture.GetBonus()
-	assert.NoError(t, err, "expected no error when getting bonus points")
-	t.Logf("Bonus Points: %+v", bonus)
+	require.NoError(t, err)
+	assert.Len(t, bonus["h"], 1)
+	assert.Equal(t, 3, bonus["h"][0].Value)
 }

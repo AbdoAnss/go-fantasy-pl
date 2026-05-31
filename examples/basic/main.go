@@ -13,6 +13,13 @@ import (
 
 const separator = "----------------------------------------"
 
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
 func main() {
 	// Step 1: Initialize the FPL client
 	fpl, err := client.NewClient()
@@ -54,7 +61,7 @@ func main() {
 	sort.Slice(sortedTeams, func(i, j int) bool {
 		return sortedTeams[i].Strength > sortedTeams[j].Strength
 	})
-	for i, team := range sortedTeams[:5] {
+	for i, team := range sortedTeams[:min(5, len(sortedTeams))] {
 		fmt.Printf("%d. %s (Strength: %d)\n", i+1, team.GetFullName(), team.Strength)
 	}
 	fmt.Println(separator)
@@ -69,7 +76,7 @@ func main() {
 
 	// Step 5: Display top 5 players
 	fmt.Println("Top 5 Players by Total Points:")
-	for i, player := range players[:5] {
+	for i, player := range players[:min(5, len(players))] {
 		team := teamMap[player.Team]
 		fmt.Printf("%d. %s (%s) - £%.1fm - %d points\n",
 			i+1,
@@ -83,24 +90,31 @@ func main() {
 	// Step 6: Use the concurrently fetched fixtures
 	fixtures := fixturesResult.Value
 
-	// Filter for upcoming fixtures
-	var upcomingFixtures []models.Fixture
+	// Filter for fixtures with a known kickoff and sort them chronologically.
+	var scheduledFixtures []models.Fixture
 	for _, fix := range fixtures {
-		if fix.Started && fix.Finished {
-			upcomingFixtures = append(upcomingFixtures, fix)
+		if fix.KickoffTime != nil {
+			scheduledFixtures = append(scheduledFixtures, fix)
 		}
 	}
+	sort.Slice(scheduledFixtures, func(i, j int) bool {
+		return scheduledFixtures[i].KickoffTime.Before(*scheduledFixtures[j].KickoffTime)
+	})
 
-	// Step 7: Display next 5 fixtures with team strengths
-	fmt.Println("Next 5 Fixtures (with Team Strengths):")
-	for i, fix := range upcomingFixtures[:5] {
+	// Step 7: Display the next 5 scheduled fixtures with team strengths.
+	fmt.Println("Next 5 Scheduled Fixtures (with Team Strengths):")
+	for i, fix := range scheduledFixtures[:min(5, len(scheduledFixtures))] {
 		homeTeam := teamMap[fix.TeamH]
 		awayTeam := teamMap[fix.TeamA]
+		gameweek := 0
+		if fix.Event != nil {
+			gameweek = *fix.Event
+		}
 		fmt.Printf("%d. %s (%d) vs %s (%d) - Gameweek %d\n",
 			i+1,
 			homeTeam.GetShortName(), homeTeam.Strength,
 			awayTeam.GetShortName(), awayTeam.Strength,
-			fix.Event)
+			gameweek)
 	}
 	fmt.Println(separator)
 
@@ -117,7 +131,7 @@ func main() {
 		return history.History[i].Round > history.History[j].Round
 	})
 
-	for i, game := range history.History[:3] {
+	for i, game := range history.History[:min(3, len(history.History))] {
 		fmt.Printf("%d. GW%d: %d pts (Goals: %d, Assists: %d)\n",
 			i+1,
 			game.Round,

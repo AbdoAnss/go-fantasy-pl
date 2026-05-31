@@ -3,53 +3,57 @@ package endpoints_test
 import (
 	"testing"
 
-	"github.com/AbdoAnss/go-fantasy-pl/client"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
-
-var (
-	testClient *client.Client
-	playerID   = 328 // Example player ID for Mohamed Salah
-)
-
-func init() {
-	var err error
-	testClient, err = client.NewClient()
-	if err != nil {
-		panic(err)
-	}
-}
 
 func TestGetAllPlayers(t *testing.T) {
-	players, err := testClient.Players.GetAllPlayers()
-	assert.NoError(t, err, "expected no error when getting all players")
-	assert.NotEmpty(t, players, "expected players to be returned from API")
+	c, server := newEndpointTestClient(t)
+	defer server.Close()
 
-	for i, player := range players {
-		t.Logf("Player %d: %s, Team: %d, Points: %d",
-			i+1, player.GetDisplayName(), player.Team, player.TotalPoints)
-		if i >= 3 {
-			break
-		}
-	}
+	players, err := c.Players.GetAllPlayers()
+	require.NoError(t, err)
+	require.Len(t, players, 3)
+
+	assert.Equal(t, 101, players[0].ID)
+	assert.Equal(t, "Bukayo Saka", players[0].GetDisplayName())
+	assert.Equal(t, 105.0, players[0].NowCost)
 }
 
 func TestGetPlayer(t *testing.T) {
-	player, err := testClient.Players.GetPlayer(playerID)
-	assert.NoError(t, err, "expected no error when getting player")
-	assert.NotNil(t, player, "expected player to be returned, got nil")
+	c, server := newEndpointTestClient(t)
+	defer server.Close()
 
-	t.Logf("Player: %s", player.GetDisplayName())
-	t.Logf("Price in pound £: %.2f", player.GetPriceInPounds())
-	t.Logf("Total Points: %d", player.TotalPoints)
-	t.Logf("Form: %v", player.Form)
+	player, err := c.Players.GetPlayer(102)
+	require.NoError(t, err)
+	require.NotNil(t, player)
+
+	assert.Equal(t, "Erling Haaland", player.GetDisplayName())
+	assert.Equal(t, 26.4, player.GetPriceInPounds())
+	assert.Equal(t, 220, player.TotalPoints)
+}
+
+func TestGetPlayer_NotFound(t *testing.T) {
+	c, server := newEndpointTestClient(t)
+	defer server.Close()
+
+	player, err := c.Players.GetPlayer(9999)
+	require.Error(t, err)
+	assert.Nil(t, player)
+	assert.Equal(t, "player with ID 9999 not found", err.Error())
 }
 
 func TestGetPlayerHistory(t *testing.T) {
-	history, err := testClient.Players.GetPlayerHistory(playerID)
-	assert.NoError(t, err, "expected no error when getting player history")
-	assert.NotNil(t, history, "expected player history to be returned, got nil")
+	c, server := newEndpointTestClient(t)
+	defer server.Close()
 
-	t.Logf("Current season appearances: %d", len(history.History))
-	t.Logf("Years in Premier League: %d", len(history.HistoryPast))
+	history, err := c.Players.GetPlayerHistory(101)
+	require.NoError(t, err)
+	require.NotNil(t, history)
+
+	require.Len(t, history.History, 2)
+	require.Len(t, history.HistoryPast, 1)
+	assert.Equal(t, 1, history.History[0].Round)
+	assert.Equal(t, 9, history.History[0].TotalPoints)
+	assert.Equal(t, "2024/25", history.HistoryPast[0].SeasonName)
 }
