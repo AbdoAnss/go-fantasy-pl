@@ -12,10 +12,26 @@ type ClassicLeague struct {
 	Standings       Standings  `json:"standings"`
 }
 
+// H2HLeague represents head-to-head league standings and match results.
+type H2HLeague struct {
+	NewEntries  H2HNewEntries `json:"new_entries"`
+	League      H2HLeagueInfo `json:"league"`
+	Standings   H2HStandings  `json:"standings"`
+	MatchesNext H2HMatches    `json:"matches_next"`
+}
+
 type NewEntries struct {
 	HasNext bool          `json:"has_next"`
 	Page    int           `json:"page"`
 	Results []interface{} `json:"results"` // Assuming results can be of various types
+}
+
+// H2HNewEntries represents newly joined entries for a head-to-head league.
+type H2HNewEntries struct {
+	HasNext bool          `json:"has_next"`
+	Page    int           `json:"page"`
+	Number  int           `json:"number"`
+	Results []interface{} `json:"results"`
 }
 
 // League represents the league details.
@@ -35,11 +51,36 @@ type League struct {
 	Rank        *int      `json:"rank"` // Pointer to allow null
 }
 
+// H2HLeagueInfo represents the league details returned by the H2H endpoint.
+type H2HLeagueInfo struct {
+	ID         int       `json:"id"`
+	Name       string    `json:"name"`
+	Created    time.Time `json:"created"`
+	Closed     bool      `json:"closed"`
+	LeagueType string    `json:"league_type"`
+	Scoring    string    `json:"_scoring"`
+	AdminEntry *int      `json:"admin_entry"`
+	StartEvent int       `json:"start_event"`
+	HasStarted bool      `json:"has_started"`
+	ShortName  *string   `json:"short_name"`
+	Rank       *int      `json:"rank"`
+	Size       *int      `json:"size"`
+	KoRounds   int       `json:"ko_rounds"`
+}
+
 // Standings represents the standings section of the Classic League.
 type Standings struct {
 	HasNext bool            `json:"has_next"`
 	Page    int             `json:"page"`
 	Results []LeagueManager `json:"results"`
+}
+
+// H2HStandings represents the standings section of a head-to-head league.
+type H2HStandings struct {
+	HasNext bool             `json:"has_next"`
+	Page    int              `json:"page"`
+	Number  int              `json:"number"`
+	Results []H2HLeagueEntry `json:"results"`
 }
 
 // Player represents an individual player's standings information.
@@ -54,6 +95,63 @@ type LeagueManager struct {
 	Entry      int    `json:"entry"`
 	EntryName  string `json:"entry_name"`
 	HasPlayed  bool   `json:"has_played"`
+}
+
+// H2HLeagueEntry represents an individual manager's H2H standings row.
+type H2HLeagueEntry struct {
+	ID            int    `json:"id"`
+	EntryName     string `json:"entry_name"`
+	PlayerName    string `json:"player_name"`
+	Movement      string `json:"movement"`
+	OwnEntry      bool   `json:"own_entry"`
+	Rank          int    `json:"rank"`
+	LastRank      int    `json:"last_rank"`
+	RankSort      int    `json:"rank_sort"`
+	Total         int    `json:"total"`
+	MatchesPlayed int    `json:"matches_played"`
+	MatchesWon    int    `json:"matches_won"`
+	MatchesDrawn  int    `json:"matches_drawn"`
+	MatchesLost   int    `json:"matches_lost"`
+	PointsFor     int    `json:"points_for"`
+	PointsAgainst int    `json:"points_against"`
+	PointsTotal   int    `json:"points_total"`
+	Division      int    `json:"division"`
+	Entry         int    `json:"entry"`
+}
+
+// H2HMatches represents the current or next H2H match page.
+type H2HMatches struct {
+	HasNext bool              `json:"has_next"`
+	Page    int               `json:"page"`
+	Number  int               `json:"number"`
+	Results []H2HLeagueResult `json:"results"`
+}
+
+// H2HLeagueResult represents one head-to-head match result.
+type H2HLeagueResult struct {
+	ID               int         `json:"id"`
+	Entry1Entry      int         `json:"entry_1_entry"`
+	Entry1Name       string      `json:"entry_1_name"`
+	Entry1PlayerName string      `json:"entry_1_player_name"`
+	Entry2Entry      int         `json:"entry_2_entry"`
+	Entry2Name       string      `json:"entry_2_name"`
+	Entry2PlayerName string      `json:"entry_2_player_name"`
+	IsKnockout       bool        `json:"is_knockout"`
+	Winner           *int        `json:"winner"`
+	Tiebreak         interface{} `json:"tiebreak"`
+	OwnEntry         bool        `json:"own_entry"`
+	Entry1Points     int         `json:"entry_1_points"`
+	Entry1Win        int         `json:"entry_1_win"`
+	Entry1Draw       int         `json:"entry_1_draw"`
+	Entry1Loss       int         `json:"entry_1_loss"`
+	Entry2Points     int         `json:"entry_2_points"`
+	Entry2Win        int         `json:"entry_2_win"`
+	Entry2Draw       int         `json:"entry_2_draw"`
+	Entry2Loss       int         `json:"entry_2_loss"`
+	Entry1Total      int         `json:"entry_1_total"`
+	Entry2Total      int         `json:"entry_2_total"`
+	SeedValue        interface{} `json:"seed_value"`
+	Event            int         `json:"event"`
 }
 
 func (cl *ClassicLeague) GetLeagueInfo() string {

@@ -82,6 +82,43 @@ func (ls *LeagueService) GetClassicLeagueStandings(id, page int) (*models.Classi
 	return &league, nil
 }
 
+// GetH2HLeagueStandings returns the standings and match data for a head-to-head league by ID.
+func (ls *LeagueService) GetH2HLeagueStandings(id int) (*models.H2HLeague, error) {
+	if id <= 0 {
+		return nil, fmt.Errorf("league ID must be positive")
+	}
+
+	endpoint := fmt.Sprintf(h2hLeagueEndpoint, id)
+	resp, err := ls.client.Get(endpoint)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get h2h league standings: %w", err)
+	}
+	defer resp.Body.Close()
+
+	switch resp.StatusCode {
+	case http.StatusOK:
+	case http.StatusNotFound:
+		return nil, fmt.Errorf("h2h league with ID %d not found", id)
+	default:
+		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	var league models.H2HLeague
+	if err := json.Unmarshal(body, &league); err != nil {
+		return nil, fmt.Errorf("failed to decode h2h league data: %w", err)
+	}
+	if league.League.ID == 0 {
+		return nil, fmt.Errorf("invalid h2h league ID")
+	}
+
+	return &league, nil
+}
+
 func (ls *LeagueService) validateLeague(league *models.ClassicLeague) error {
 	if league == nil {
 		return fmt.Errorf("received nil league data")

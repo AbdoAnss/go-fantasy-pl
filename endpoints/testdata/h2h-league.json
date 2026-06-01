@@ -1,0 +1,74 @@
+{
+  "new_entries": {
+    "has_next": false,
+    "number": 1,
+    "results": []
+  },
+  "league": {
+    "id": 42,
+    "name": "Test H2H League",
+    "created": "2024-08-01T12:00:00Z",
+    "closed": false,
+    "league_type": "x",
+    "_scoring": "h",
+    "admin_entry": null,
+    "start_event": 1
+  },
+  "standings": {
+    "has_next": false,
+    "number": 1,
+    "results": [
+      {
+        "id": 1001,
+        "entry_name": "North Stand FC",
+        "player_name": "Ada Lovelace",
+        "movement": "same",
+        "own_entry": false,
+        "rank": 1,
+        "last_rank": 2,
+        "rank_sort": 1,
+        "total": 0,
+        "matches_played": 3,
+        "matches_won": 2,
+        "matches_drawn": 1,
+        "matches_lost": 0,
+        "points_for": 180,
+        "points_against": 150,
+        "points_total": 7,
+        "division": 10,
+        "entry": 9001
+      }
+    ]
+  },
+  "matches_next": {
+    "has_next": false,
+    "number": 1,
+    "results": [
+      {
+        "id": 2001,
+        "entry_1_entry": 9001,
+        "entry_1_name": "North Stand FC",
+        "entry_1_player_name": "Ada Lovelace",
+        "entry_2_entry": 9002,
+        "entry_2_name": "South Stand FC",
+        "entry_2_player_name": "Grace Hopper",
+        "is_knockout": false,
+        "winner": 9001,
+        "tiebreak": null,
+        "own_entry": false,
+        "entry_1_points": 63,
+        "entry_1_win": 1,
+        "entry_1_draw": 0,
+        "entry_1_loss": 0,
+        "entry_2_points": 58,
+        "entry_2_win": 0,
+        "entry_2_draw": 0,
+        "entry_2_loss": 1,
+        "entry_1_total": 3,
+        "entry_2_total": 0,
+        "seed_value": null,
+        "event": 1
+      }
+    ]
+  }
+}
