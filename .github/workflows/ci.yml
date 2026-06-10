@@ -65,14 +65,14 @@ jobs:
         run: go build ./...
 
       - name: Upload coverage artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage
           path: coverage.out
 
       - name: Upload coverage to Codecov
         if: ${{ secrets.CODECOV_TOKEN != '' }}
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage.out

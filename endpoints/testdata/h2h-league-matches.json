@@ -1,0 +1,33 @@
+{
+  "has_next": true,
+  "page": 1,
+  "results": [
+    {
+      "id": 21353851,
+      "entry_1_entry": 5084051,
+      "entry_1_name": "uzzifc",
+      "entry_1_player_name": "uzair davids",
+      "entry_1_points": 60,
+      "entry_1_win": 0,
+      "entry_1_draw": 0,
+      "entry_1_loss": 1,
+      "entry_1_total": 0,
+      "entry_2_entry": 7013818,
+      "entry_2_name": "Saige Fc",
+      "entry_2_player_name": "Shane Adams",
+      "entry_2_points": 65,
+      "entry_2_win": 1,
+      "entry_2_draw": 0,
+      "entry_2_loss": 0,
+      "entry_2_total": 3,
+      "is_knockout": false,
+      "league": 1221170,
+      "winner": null,
+      "seed_value": null,
+      "event": 1,
+      "tiebreak": null,
+      "is_bye": false,
+      "knockout_name": ""
+    }
+  ]
+}
