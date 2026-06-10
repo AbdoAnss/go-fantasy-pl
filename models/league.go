@@ -170,16 +170,37 @@ type H2HMatch struct {
 }
 
 type H2HLeagueStandings struct {
-	NewEntries      NewEntries   `json:"new_entries"`
-	LastUpdatedData time.Time    `json:"last_updated_data"`
-	League          League       `json:"league"`
-	Standings       H2HStandings `json:"standings"`
+	NewEntries      H2HNewEntries `json:"new_entries"`
+	LastUpdatedData *time.Time    `json:"last_updated_data"`
+	League          H2HLeague     `json:"league"`
+	Standings       H2HStandings  `json:"standings"`
+}
+
+type H2HNewEntries struct {
+	HasNext bool          `json:"has_next"`
+	Page    int           `json:"page"`
+	Results []interface{} `json:"results"`
+}
+
+type H2HLeague struct {
+	ID          int       `json:"id"`
+	Name        string    `json:"name"`
+	Created     time.Time `json:"created"`
+	Closed      bool      `json:"closed"`
+	MaxEntries  *int      `json:"max_entries"`
+	LeagueType  string    `json:"league_type"`
+	Scoring     string    `json:"scoring"`
+	AdminEntry  *int      `json:"admin_entry"`
+	StartEvent  int       `json:"start_event"`
+	CodePrivacy string    `json:"code_privacy"`
+	HasCup      bool      `json:"has_cup"`
+	CupLeague   *int      `json:"cup_league"`
+	KoRounds    *int      `json:"ko_rounds"`
 }
 
 type H2HStandings struct {
 	HasNext bool                `json:"has_next"`
 	Page    int                 `json:"page"`
-	Number  int                 `json:"number"`
 	Results []H2HLeagueStanding `json:"results"`
 }
 
@@ -187,8 +208,6 @@ type H2HLeagueStanding struct {
 	ID            int    `json:"id"`
 	EntryName     string `json:"entry_name"`
 	PlayerName    string `json:"player_name"`
-	Movement      string `json:"movement"`
-	OwnEntry      bool   `json:"own_entry"`
 	Rank          int    `json:"rank"`
 	LastRank      int    `json:"last_rank"`
 	RankSort      int    `json:"rank_sort"`
@@ -198,8 +217,6 @@ type H2HLeagueStanding struct {
 	MatchesDrawn  int    `json:"matches_drawn"`
 	MatchesLost   int    `json:"matches_lost"`
 	PointsFor     int    `json:"points_for"`
-	PointsAgainst int    `json:"points_against"`
-	PointsTotal   int    `json:"points_total"`
 	Division      int    `json:"division"`
 	Entry         int    `json:"entry"`
 }

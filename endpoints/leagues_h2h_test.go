@@ -119,9 +119,10 @@ func TestGetH2HLeagueStandings(t *testing.T) {
 		require.Len(t, resp.Standings.Results, 1)
 
 		assert.Equal(t, 1221170, resp.League.ID)
-		assert.Equal(t, 1, resp.Standings.Number)
+		assert.Equal(t, 1, resp.Standings.Page)
+		assert.Nil(t, resp.LastUpdatedData)
 		assert.Equal(t, "Saige Fc", resp.Standings.Results[0].EntryName)
-		assert.Equal(t, 3, resp.Standings.Results[0].PointsTotal)
+		assert.Equal(t, 72, resp.Standings.Results[0].Total)
 	})
 
 	t.Run("invalid input", func(t *testing.T) {

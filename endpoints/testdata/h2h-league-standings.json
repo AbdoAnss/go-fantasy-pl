@@ -1,47 +1,43 @@
 {
   "new_entries": {
     "has_next": false,
-    "number": 1,
+    "page": 1,
     "results": []
   },
-  "last_updated_data": "2026-06-08T19:01:36Z",
+  "last_updated_data": null,
   "league": {
     "id": 1221170,
-    "name": "H2H Example League",
-    "created": "2025-07-10T09:15:00Z",
-    "closed": false,
+    "name": "FPL",
+    "created": "2025-08-11T11:02:34.453188Z",
+    "closed": true,
     "max_entries": null,
     "league_type": "x",
     "scoring": "h",
-    "admin_entry": null,
+    "admin_entry": 2415714,
     "start_event": 1,
     "code_privacy": "p",
     "has_cup": false,
-    "cup_league": 0,
-    "rank": null
+    "cup_league": null,
+    "ko_rounds": 2
   },
   "standings": {
     "has_next": false,
-    "number": 1,
+    "page": 1,
     "results": [
       {
-        "id": 112233,
+        "id": 1130180,
         "entry_name": "Saige Fc",
         "player_name": "Shane Adams",
-        "movement": "same",
-        "own_entry": false,
-        "rank": 1,
-        "last_rank": 1,
-        "rank_sort": 1,
-        "total": 0,
-        "matches_played": 1,
-        "matches_won": 1,
+        "rank": 4,
+        "last_rank": 3,
+        "rank_sort": 4,
+        "total": 72,
+        "matches_played": 36,
+        "matches_won": 24,
         "matches_drawn": 0,
-        "matches_lost": 0,
-        "points_for": 65,
-        "points_against": 60,
-        "points_total": 3,
-        "division": 998,
+        "matches_lost": 12,
+        "points_for": 1904,
+        "division": 94787,
         "entry": 7013818
       }
     ]
