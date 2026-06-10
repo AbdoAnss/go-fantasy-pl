@@ -15,6 +15,7 @@ type ClassicLeague struct {
 type NewEntries struct {
 	HasNext bool          `json:"has_next"`
 	Page    int           `json:"page"`
+	Number  int           `json:"number"`
 	Results []interface{} `json:"results"` // Assuming results can be of various types
 }
 
@@ -39,6 +40,7 @@ type League struct {
 type Standings struct {
 	HasNext bool            `json:"has_next"`
 	Page    int             `json:"page"`
+	Number  int             `json:"number"`
 	Results []LeagueManager `json:"results"`
 }
 
@@ -118,9 +120,103 @@ func (lm *LeagueManager) GetRankChangeString() string {
 
 // Standings methods
 func (s *Standings) GetPageInfo() string {
-	return fmt.Sprintf("Page %d", s.Page)
+	currentPage := s.Page
+	if currentPage == 0 {
+		currentPage = s.Number
+	}
+	return fmt.Sprintf("Page %d", currentPage)
 }
 
 func (s *Standings) HasPreviousPage() bool {
-	return s.Page > 1
+	currentPage := s.Page
+	if currentPage == 0 {
+		currentPage = s.Number
+	}
+	return currentPage > 1
+}
+
+type H2HLeagueMatchesPage struct {
+	HasNext bool       `json:"has_next"`
+	Page    int        `json:"page"`
+	Results []H2HMatch `json:"results"`
+}
+
+type H2HMatch struct {
+	ID               int    `json:"id"`
+	Entry1Entry      int    `json:"entry_1_entry"`
+	Entry1Name       string `json:"entry_1_name"`
+	Entry1PlayerName string `json:"entry_1_player_name"`
+	Entry1Points     int    `json:"entry_1_points"`
+	Entry1Win        int    `json:"entry_1_win"`
+	Entry1Draw       int    `json:"entry_1_draw"`
+	Entry1Loss       int    `json:"entry_1_loss"`
+	Entry1Total      int    `json:"entry_1_total"`
+	Entry2Entry      int    `json:"entry_2_entry"`
+	Entry2Name       string `json:"entry_2_name"`
+	Entry2PlayerName string `json:"entry_2_player_name"`
+	Entry2Points     int    `json:"entry_2_points"`
+	Entry2Win        int    `json:"entry_2_win"`
+	Entry2Draw       int    `json:"entry_2_draw"`
+	Entry2Loss       int    `json:"entry_2_loss"`
+	Entry2Total      int    `json:"entry_2_total"`
+	IsKnockout       bool   `json:"is_knockout"`
+	League           int    `json:"league"`
+	Winner           *int   `json:"winner"`
+	SeedValue        *int   `json:"seed_value"`
+	Event            int    `json:"event"`
+	Tiebreak         *int   `json:"tiebreak"`
+	IsBye            bool   `json:"is_bye"`
+	KnockoutName     string `json:"knockout_name"`
+}
+
+type H2HLeagueStandings struct {
+	NewEntries      H2HNewEntries `json:"new_entries"`
+	LastUpdatedData *time.Time    `json:"last_updated_data"`
+	League          H2HLeague     `json:"league"`
+	Standings       H2HStandings  `json:"standings"`
+}
+
+type H2HNewEntries struct {
+	HasNext bool          `json:"has_next"`
+	Page    int           `json:"page"`
+	Results []interface{} `json:"results"`
+}
+
+type H2HLeague struct {
+	ID          int       `json:"id"`
+	Name        string    `json:"name"`
+	Created     time.Time `json:"created"`
+	Closed      bool      `json:"closed"`
+	MaxEntries  *int      `json:"max_entries"`
+	LeagueType  string    `json:"league_type"`
+	Scoring     string    `json:"scoring"`
+	AdminEntry  *int      `json:"admin_entry"`
+	StartEvent  int       `json:"start_event"`
+	CodePrivacy string    `json:"code_privacy"`
+	HasCup      bool      `json:"has_cup"`
+	CupLeague   *int      `json:"cup_league"`
+	KoRounds    *int      `json:"ko_rounds"`
+}
+
+type H2HStandings struct {
+	HasNext bool                `json:"has_next"`
+	Page    int                 `json:"page"`
+	Results []H2HLeagueStanding `json:"results"`
+}
+
+type H2HLeagueStanding struct {
+	ID            int    `json:"id"`
+	EntryName     string `json:"entry_name"`
+	PlayerName    string `json:"player_name"`
+	Rank          int    `json:"rank"`
+	LastRank      int    `json:"last_rank"`
+	RankSort      int    `json:"rank_sort"`
+	Total         int    `json:"total"`
+	MatchesPlayed int    `json:"matches_played"`
+	MatchesWon    int    `json:"matches_won"`
+	MatchesDrawn  int    `json:"matches_drawn"`
+	MatchesLost   int    `json:"matches_lost"`
+	PointsFor     int    `json:"points_for"`
+	Division      int    `json:"division"`
+	Entry         int    `json:"entry"`
 }
