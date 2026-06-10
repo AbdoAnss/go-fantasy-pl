@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 
 	"github.com/AbdoAnss/go-fantasy-pl/api"
 	"github.com/AbdoAnss/go-fantasy-pl/models"
@@ -12,7 +13,8 @@ import (
 
 const (
 	classicLeagueEndpoint = "/leagues-classic/%d/standings/?page_standings=%d"
-	h2hLeagueEndpoint     = "/leagues-h2h-matches/league/%d/"
+	h2hLeagueMatchesPath  = "/leagues-h2h-matches/league/%d/"
+	h2hLeagueStandings    = "/leagues-h2h/%d/standings/"
 	maxPageCache          = 3 // Only cache first 3 pages
 )
 
@@ -105,4 +107,92 @@ func (ls *LeagueService) GetTotalPages(league *models.ClassicLeague) int {
 
 	entriesPerPage := 50 // FPL default
 	return (totalEntries + entriesPerPage - 1) / entriesPerPage
+}
+
+// GetH2HLeagueMatches returns paginated H2H league match results.
+// Page starts from 1 and event is optional (set 0 to omit it).
+func (ls *LeagueService) GetH2HLeagueMatches(id, page, event int) (*models.H2HLeagueMatchesPage, error) {
+	if id <= 0 {
+		return nil, fmt.Errorf("league ID must be positive")
+	}
+	if page <= 0 {
+		return nil, fmt.Errorf("page must be positive")
+	}
+	if event < 0 {
+		return nil, fmt.Errorf("event cannot be negative")
+	}
+
+	params := url.Values{}
+	params.Set("page", fmt.Sprintf("%d", page))
+	if event > 0 {
+		params.Set("event", fmt.Sprintf("%d", event))
+	}
+
+	endpoint := fmt.Sprintf("%s?%s", fmt.Sprintf(h2hLeagueMatchesPath, id), params.Encode())
+	resp, err := ls.client.Get(endpoint)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get H2H league matches: %w", err)
+	}
+	defer resp.Body.Close()
+
+	switch resp.StatusCode {
+	case http.StatusOK:
+	case http.StatusNotFound:
+		return nil, fmt.Errorf("league with ID %d not found", id)
+	default:
+		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	var matches models.H2HLeagueMatchesPage
+	if err := json.Unmarshal(body, &matches); err != nil {
+		return nil, fmt.Errorf("failed to decode H2H league matches data: %w", err)
+	}
+
+	return &matches, nil
+}
+
+// GetH2HLeagueStandings returns paginated H2H league standings.
+func (ls *LeagueService) GetH2HLeagueStandings(id, page int) (*models.H2HLeagueStandings, error) {
+	if id <= 0 {
+		return nil, fmt.Errorf("league ID must be positive")
+	}
+	if page <= 0 {
+		return nil, fmt.Errorf("page must be positive")
+	}
+
+	endpoint := fmt.Sprintf("%s?page_standings=%d", fmt.Sprintf(h2hLeagueStandings, id), page)
+	resp, err := ls.client.Get(endpoint)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get H2H league standings: %w", err)
+	}
+	defer resp.Body.Close()
+
+	switch resp.StatusCode {
+	case http.StatusOK:
+	case http.StatusNotFound:
+		return nil, fmt.Errorf("league with ID %d not found", id)
+	default:
+		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	var standings models.H2HLeagueStandings
+	if err := json.Unmarshal(body, &standings); err != nil {
+		return nil, fmt.Errorf("failed to decode H2H league standings data: %w", err)
+	}
+
+	if standings.League.ID == 0 {
+		return nil, fmt.Errorf("invalid league ID")
+	}
+
+	return &standings, nil
 }
