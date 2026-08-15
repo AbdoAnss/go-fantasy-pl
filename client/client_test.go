@@ -135,3 +135,49 @@ func TestNewClient_WithMemoryCacheOverridesDefaultRedis(t *testing.T) {
 	require.Len(t, teams, 1)
 	assert.False(t, mr.Exists("memory-override:teams"))
 }
+
+func TestGetRaw_ReturnsUndecodedBody(t *testing.T) {
+	payload := []byte(`{"has_next": true, "page": 1, "results": []}`)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/leagues-h2h-matches/league/1/", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write(payload)
+	}))
+	defer server.Close()
+
+	c, err := NewClient(WithBaseURL(server.URL), WithMemoryCache())
+	require.NoError(t, err)
+
+	body, err := c.GetRaw("/leagues-h2h-matches/league/1/")
+	require.NoError(t, err)
+	assert.Equal(t, payload, body)
+}
+
+func TestGetRaw_NonOKStatusFails(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.NotFound(w, r)
+	}))
+	defer server.Close()
+
+	c, err := NewClient(WithBaseURL(server.URL), WithMemoryCache())
+	require.NoError(t, err)
+
+	body, err := c.GetRaw("/entry/1/")
+	assert.Nil(t, body)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unexpected status code")
+}
+
+func TestGetRaw_NetworkErrorFails(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	addr := server.URL
+	server.Close() // close immediately so the connection is refused
+
+	c, err := NewClient(WithBaseURL(addr), WithMemoryCache())
+	require.NoError(t, err)
+
+	body, err := c.GetRaw("/bootstrap-static/")
+	assert.Nil(t, body)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "request failed")
+}

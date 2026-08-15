@@ -1,0 +1,53 @@
+name: Live Conformance
+
+# Weekly drift check against the real FPL API. Never blocks PRs; on failure
+# it opens an issue so the schema change can be triaged and the models or
+# allowlists updated.
+on:
+  schedule:
+    - cron: "0 6 * * 1" # Mondays 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: live-conformance
+  cancel-in-progress: true
+
+jobs:
+  conformance:
+    name: Live API conformance
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Run live conformance harness
+        env:
+          FPL_LIVE_TEST: "1"
+        run: go test -count=1 -run TestLiveConformance ./endpoints/ -v
+
+      - name: Report schema drift
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          existing=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "Live FPL API conformance failed" --json number --jq 'length')
+          if [ "$existing" = "0" ]; then
+            gh issue create --repo "$GITHUB_REPOSITORY" \
+              --title "Live FPL API conformance failed" \
+              --body "The scheduled live conformance run failed. The FPL API schema may have drifted; see the [workflow run](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}) for the failing keys, then update the models or the allowlists in endpoints/conformance_specs_test.go and run \`make recapture\`." \
+              || true
+          fi
