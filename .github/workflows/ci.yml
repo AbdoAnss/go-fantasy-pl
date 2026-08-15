@@ -49,6 +49,10 @@ jobs:
     name: Verify
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # The secrets context is not available in step-level if: conditions, so
+    # the Codecov token is surfaced through job env instead.
+    env:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -97,7 +101,7 @@ jobs:
           path: coverage.out
 
       - name: Upload coverage to Codecov
-        if: ${{ secrets.CODECOV_TOKEN != '' }}
+        if: ${{ env.CODECOV_TOKEN != '' }}
         uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
