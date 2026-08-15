@@ -1,0 +1,48 @@
+{
+ "has_next": false,
+ "page": 1,
+ "results": [
+  {
+   "id": "10311",
+   "event": 37,
+   "entry_1_match": 1,
+   "entry_1_points": 55,
+   "entry_1_win": false,
+   "entry_1_draw": false,
+   "entry_1_loss": true,
+   "entry_1_name": "Klopp's G&T",
+   "entry_1_player_name": "Alice",
+   "entry_2_match": 5,
+   "entry_2_points": 62,
+   "entry_2_win": true,
+   "entry_2_draw": false,
+   "entry_2_loss": false,
+   "entry_2_name": "Pep's Chess Club",
+   "entry_2_player_name": "Eve",
+   "is_knockout": true,
+   "winner": 5,
+   "knockout_name": "Round 1"
+  },
+  {
+   "id": "10312",
+   "event": 37,
+   "entry_1_match": 6,
+   "entry_1_points": 39,
+   "entry_1_win": false,
+   "entry_1_draw": false,
+   "entry_1_loss": true,
+   "entry_1_name": "Relegation Promise",
+   "entry_1_player_name": "Frank",
+   "entry_2_match": 2,
+   "entry_2_points": 48,
+   "entry_2_win": true,
+   "entry_2_draw": false,
+   "entry_2_loss": false,
+   "entry_2_name": "Salty Pepe",
+   "entry_2_player_name": "Bob",
+   "is_knockout": true,
+   "winner": 6,
+   "knockout_name": "Round 1"
+  }
+ ]
+}
