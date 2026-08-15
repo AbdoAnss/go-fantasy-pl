@@ -79,6 +79,15 @@ func TestElementSummarySchema(t *testing.T) {
 		conformance.Spec{Model: &history.Fixtures[0]})
 }
 
+func TestClassicLeagueStandingsSchema(t *testing.T) {
+	raw := readTestdata(t, "leagues-classic-standings.json")
+
+	var league models.ClassicLeague
+	require.NoError(t, json.Unmarshal(raw, &league))
+
+	conformance.Check(t, raw, conformance.Spec{Model: &league})
+}
+
 func TestH2HLeagueMatchesSchema(t *testing.T) {
 	raw := readTestdata(t, "h2h-league-matches.json")
 

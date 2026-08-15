@@ -120,13 +120,18 @@ func (ls *LeagueService) validateLeague(league *models.ClassicLeague) error {
 
 // GetTotalPages calculates the total number of pages in a classic league.
 func (ls *LeagueService) GetTotalPages(league *models.ClassicLeague) int {
-	if league == nil || len(league.Standings.Results) == 0 {
+	if league == nil {
 		return 0
 	}
 
+	// MaxEntries, when the league declares it, determines pagination even if
+	// the fetched page has no rows yet (e.g. pre-season).
 	totalEntries := len(league.Standings.Results)
 	if league.League.GetMaxEntries() > 0 {
 		totalEntries = league.League.GetMaxEntries()
+	}
+	if totalEntries == 0 {
+		return 0
 	}
 
 	entriesPerPage := 50 // FPL default

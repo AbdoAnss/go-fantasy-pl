@@ -265,3 +265,50 @@ func TestReport_ListsUnmappedKeys(t *testing.T) {
 		t.Fatalf("expected sorted unmapped keys [aa zz], got %v", unmapped)
 	}
 }
+
+type uintFixture struct {
+	Count uint `json:"count"`
+}
+
+func TestCheck_UnsignedFields(t *testing.T) {
+	raw := `{"count": 7}`
+	decoded := decodeInto[uintFixture](t, raw)
+
+	failures := runCheck(t, raw, Spec{Model: &decoded})
+	if len(failures) != 0 {
+		t.Fatalf("expected unsigned field to pass, got: %v", failures)
+	}
+
+	stale := decodeInto[uintFixture](t, `{"count": 9}`)
+	failures = runCheck(t, raw, Spec{Model: &stale})
+	if !anyContains(failures, "uintFixture.Count does not match payload value 7") {
+		t.Fatalf("expected unsigned fidelity failure, got: %v", failures)
+	}
+}
+
+func TestExtract_ErrorPaths(t *testing.T) {
+	cases := []struct {
+		name string
+		raw  string
+		path []any
+		want string
+	}{
+		{"index into object", `{"a": 1}`, []any{0}, "payload node is not an array"},
+		{"key into array", `[1, 2]`, []any{"a"}, "payload node is not an object"},
+		{"index out of range", `{"r": [1]}`, []any{"r", 5}, "index out of range"},
+		{"null node", `{"a": null}`, []any{"a"}, "leads to a null node"},
+		{"bad segment type", `{"a": 1}`, []any{1.5}, "path segments must be string or int"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			mock := &mockTB{TB: t}
+			func() {
+				defer mock.recoverFatal()
+				Extract(mock, []byte(tc.raw), tc.path...)
+			}()
+			if !anyContains(mock.failures, tc.want) {
+				t.Fatalf("expected %q, got: %v", tc.want, mock.failures)
+			}
+		})
+	}
+}

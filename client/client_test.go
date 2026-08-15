@@ -167,3 +167,17 @@ func TestGetRaw_NonOKStatusFails(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unexpected status code")
 }
+
+func TestGetRaw_NetworkErrorFails(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	addr := server.URL
+	server.Close() // close immediately so the connection is refused
+
+	c, err := NewClient(WithBaseURL(addr), WithMemoryCache())
+	require.NoError(t, err)
+
+	body, err := c.GetRaw("/bootstrap-static/")
+	assert.Nil(t, body)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "request failed")
+}
