@@ -199,6 +199,49 @@ func TestCheck_SliceLengthMismatchFails(t *testing.T) {
 	}
 }
 
+func TestCheck_EmptyModelSliceWithNonEmptyPayloadDoesNotPanic(t *testing.T) {
+	// The classic stale-model scenario: the payload has elements but the
+	// decoded slice is empty. Check must report the mismatch, not panic.
+	raw := `[{"has_next": true, "page": 1, "name": "a", "winner": null}]`
+	decoded := []pageFixture{}
+
+	failures := runCheck(t, raw, Spec{Model: decoded})
+	if !anyContains(failures, "model has 0 elements, payload has 1") {
+		t.Fatalf("expected length mismatch failure, got: %v", failures)
+	}
+}
+
+func TestCheck_PointerSliceModel(t *testing.T) {
+	raw := `[{"has_next": true, "page": 1, "name": "a", "winner": null}]`
+	decoded := decodeInto[[]*pageFixture](t, raw)
+
+	failures := runCheck(t, raw, Spec{Model: decoded})
+	if len(failures) != 0 {
+		t.Fatalf("expected []*T slice model to pass, got: %v", failures)
+	}
+}
+
+func TestReport_NilModelFailsCleanly(t *testing.T) {
+	mock := &mockTB{TB: t}
+	func() {
+		defer mock.recoverFatal()
+		Report(mock, []byte(`{"a":1}`), Spec{Model: (*pageFixture)(nil)})
+	}()
+	if !anyContains(mock.failures, "Spec.Model must be a populated struct") {
+		t.Fatalf("expected clean fatal for nil model, got: %v", mock.failures)
+	}
+}
+
+func TestReport_PointerSliceModel(t *testing.T) {
+	raw := `{"has_next": true, "page": 1, "name": "x", "winner": null, "extra": 1}`
+	decoded := decodeInto[[]*pageFixture](t, `[{"has_next": true, "page": 1, "name": "x", "winner": null}]`)
+
+	unmapped := Report(t, []byte(raw), Spec{Model: decoded})
+	if strings.Join(unmapped, ",") != "extra" {
+		t.Fatalf("expected [extra] for []*T model, got %v", unmapped)
+	}
+}
+
 func TestExtract(t *testing.T) {
 	raw := []byte(`{"results": [{"id": 1}, {"id": 2}], "page": 3}`)
 

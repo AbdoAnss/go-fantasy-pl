@@ -127,7 +127,11 @@ func Report(t testing.TB, raw []byte, spec Spec) []string {
 		t.Fatalf("conformance: payload is not a JSON object")
 	}
 
-	tags := jsonTags(structType(reflect.ValueOf(spec.Model)))
+	mt := structType(reflect.ValueOf(spec.Model))
+	if mt == nil || mt.Kind() != reflect.Struct {
+		t.Fatalf("conformance: Spec.Model must be a populated struct or slice of structs")
+	}
+	tags := jsonTags(mt)
 	allow := map[string]bool{}
 	for _, k := range spec.Allowlist {
 		allow[k] = true
@@ -160,7 +164,9 @@ func check(t testing.TB, payload any, model reflect.Value, allow map[string]bool
 		if model.Len() != len(arr) {
 			t.Errorf("conformance: model has %d elements, payload has %d", model.Len(), len(arr))
 		}
-		if len(arr) == 0 {
+		// An empty model (or payload) leaves nothing to compare element-wise;
+		// the length mismatch above already reports the discrepancy.
+		if len(arr) == 0 || model.Len() == 0 {
 			return
 		}
 		check(t, arr[0], model.Index(0), allow)
@@ -360,7 +366,12 @@ func structType(v reflect.Value) reflect.Type {
 		return nil
 	}
 	if t.Kind() == reflect.Slice {
-		return t.Type().Elem()
+		// Dereference pointer element types so []*T behaves like []T.
+		elem := t.Type().Elem()
+		for elem.Kind() == reflect.Pointer {
+			elem = elem.Elem()
+		}
+		return elem
 	}
 	return t.Type()
 }

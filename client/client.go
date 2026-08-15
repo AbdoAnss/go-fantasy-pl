@@ -102,6 +102,18 @@ func (c *Client) Get(endpoint string) (*http.Response, error) {
 	return resp, nil
 }
 
+// StatusError reports a non-200 response from GetRaw. It is a typed error so
+// callers (e.g. the live conformance harness) can branch on the status code
+// with errors.As instead of parsing message strings.
+type StatusError struct {
+	Endpoint   string
+	StatusCode int
+}
+
+func (e *StatusError) Error() string {
+	return fmt.Sprintf("unexpected status code fetching %s: %d", e.Endpoint, e.StatusCode)
+}
+
 // GetRaw performs a rate-limited GET request and returns the undecoded
 // response body. It is used by the live conformance harness to validate
 // models against the exact payload the API returned.
@@ -113,7 +125,7 @@ func (c *Client) GetRaw(endpoint string) ([]byte, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unexpected status code fetching %s: %d", endpoint, resp.StatusCode)
+		return nil, &StatusError{Endpoint: endpoint, StatusCode: resp.StatusCode}
 	}
 
 	body, err := io.ReadAll(resp.Body)

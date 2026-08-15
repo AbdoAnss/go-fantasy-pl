@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"testing"
 	"time"
@@ -174,7 +175,14 @@ func TestLiveConformance(t *testing.T) {
 
 	for _, id := range ids.Managers {
 		t.Run(fmt.Sprintf("Manager%d", id), func(t *testing.T) {
-			raw := mustGetRaw(t, c, fmt.Sprintf("/entry/%d/", id))
+			// Raw fetch first so a purged entry skips before any hard
+			// assertions run.
+			raw, rawErr := c.GetRaw(fmt.Sprintf("/entry/%d/", id))
+			if isStalePayload(t, rawErr) {
+				t.Skipf("manager %d no longer exists on the live API", id)
+			}
+			require.NoError(t, rawErr)
+			require.NotEmpty(t, raw)
 
 			var manager models.Manager
 			require.NoError(t, json.Unmarshal(raw, &manager))
@@ -324,6 +332,15 @@ func isStaleID(t *testing.T, err error) bool {
 		return true
 	}
 	return false
+}
+
+// isStalePayload reports whether a GetRaw error is a 404 for a configured
+// live ID, so purged entities skip instead of failing the walk.
+func isStalePayload(t *testing.T, err error) bool {
+	t.Helper()
+
+	var statusErr *client.StatusError
+	return errors.As(err, &statusErr) && statusErr.StatusCode == http.StatusNotFound
 }
 
 // logUnmappedBacklog surfaces the "available but unmapped" inventory so the

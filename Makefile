@@ -1,4 +1,4 @@
-.PHONY: test live-test recapture fmt vet
+.PHONY: test live-test recapture fmt fmt-check vet
 
 # Hermetic suite: schema conformance + behavior tests against committed
 # captures. No network, runs in CI.
@@ -16,6 +16,9 @@ recapture:
 	FPL_LIVE_TEST=1 FPL_RECAPTURE=1 go test -count=1 -run TestLiveConformance ./endpoints/ -v
 
 fmt:
+	gofmt -w .
+
+fmt-check:
 	gofmt -l .
 
 vet:
