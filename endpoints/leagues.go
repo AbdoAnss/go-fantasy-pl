@@ -7,7 +7,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"strconv"
 
 	"github.com/AbdoAnss/go-fantasy-pl/api"
 	"github.com/AbdoAnss/go-fantasy-pl/models"
@@ -15,40 +14,32 @@ import (
 
 const (
 	classicLeagueEndpoint = "/leagues-classic/%d/standings/?page_standings=%d"
-	h2hLeagueEndpoint     = "/leagues-h2h-matches/league/%d/"
+	h2hLeagueMatchesPath  = "/leagues-h2h-matches/league/%d/"
+	h2hLeagueStandings    = "/leagues-h2h/%d/standings/"
 	maxPageCache          = 3 // Only cache first 3 pages
 )
 
-// ErrLeagueNotFound is returned when the FPL API responds with HTTP 404,
-// meaning the league ID does not exist (or is no longer accessible).
+// ErrLeagueNotFound is wrapped into every league error caused by an HTTP 404,
+// so callers can match it with errors.Is regardless of league type.
 var ErrLeagueNotFound = errors.New("league not found")
 
-// ErrInvalidH2HQuery is returned when the FPL API rejects the request with
-// HTTP 400. In practice this happens for invalid query parameters, most
-// commonly an event value outside the gameweek range (e.g. event=999).
+// ErrInvalidH2HQuery is returned when the FPL API rejects an H2H matches
+// request with HTTP 400. In practice this happens for an event value outside
+// the valid gameweek range (e.g. event=999).
 type ErrInvalidH2HQuery struct {
-	LeagueID    int
-	QueryParams url.Values
-	Detail      string
+	LeagueID int
+	Page     int
+	Event    int
+	Detail   string
 }
 
 func (e *ErrInvalidH2HQuery) Error() string {
-	return fmt.Sprintf("invalid query for H2H league %d (%s): the FPL API rejected the request (400)%s",
-		e.LeagueID, encodeQuery(e.QueryParams), detailSuffix(e.Detail))
-}
-
-func encodeQuery(v url.Values) string {
-	if len(v) == 0 {
-		return "no query parameters"
+	msg := fmt.Sprintf("invalid query for H2H league %d (page=%d, event=%d): the FPL API rejected the request with 400",
+		e.LeagueID, e.Page, e.Event)
+	if e.Detail != "" {
+		msg += ": " + e.Detail
 	}
-	return v.Encode()
-}
-
-func detailSuffix(detail string) string {
-	if detail == "" {
-		return ""
-	}
-	return ": " + detail
+	return msg
 }
 
 // LeagueService provides methods for fetching league standings and details,
@@ -142,62 +133,38 @@ func (ls *LeagueService) GetTotalPages(league *models.ClassicLeague) int {
 	return (totalEntries + entriesPerPage - 1) / entriesPerPage
 }
 
-// H2HMatchesOption customises a GetH2HLeagueMatches request.
-type H2HMatchesOption func(*h2hMatchesParams)
-
-type h2hMatchesParams struct {
-	event int
-	page  int
-}
-
-// WithH2HEvent restricts results to a single gameweek (or knockout round
-// when the value falls in the league's knockout range). Omit it to receive
-// a paginated mixed feed spanning all played gameweeks. Values outside the
-// valid gameweek range cause the FPL API to respond with HTTP 400, which
-// surfaces as ErrInvalidH2HQuery.
-func WithH2HEvent(event int) H2HMatchesOption {
-	return func(p *h2hMatchesParams) { p.event = event }
-}
-
-// WithH2HPage requests a specific results page (1-indexed). Pagination
-// applies both to the mixed feed and to event-filtered queries; note that
-// has_next reflects the query used, so a filtered gameweek with few
-// matches may report has_next=false where the mixed feed reports true.
-func WithH2HPage(page int) H2HMatchesOption {
-	return func(p *h2hMatchesParams) { p.page = page }
-}
-
-// GetH2HLeagueMatches returns head-to-head matches for a league.
+// GetH2HLeagueMatches returns paginated H2H league match results.
 //
-// Without options it returns the first page of a paginated mixed feed that
-// spans multiple gameweeks. With WithH2HEvent the feed is filtered to a
-// single gameweek; for events in the knockout range the returned matches
-// have is_knockout=true, a populated winner, and a knockout_name such as
-// "Round 1". With WithH2HPage a specific page is fetched.
+// Semantics (mirroring the live FPL API):
+//   - Omitting event (0) returns a paginated mixed feed of matches spanning
+//     multiple gameweeks.
+//   - Setting event filters matches to that gameweek (or knockout round when
+//     the value falls in the league's knockout range); has_next reflects the
+//     filtered query, so it can differ from the mixed feed.
+//   - Knockout matches have is_knockout=true, a non-nil winner, and a
+//     knockout_name such as "Round 1".
+//   - An event outside the valid gameweek range (e.g. 999) makes the API
+//     respond with HTTP 400, surfaced as *ErrInvalidH2HQuery.
 //
-// Errors:
-//   - ErrLeagueNotFound: HTTP 404, unknown league ID.
-//   - *ErrInvalidH2HQuery: HTTP 400, e.g. an event value outside the
-//     gameweek range (event=999).
-func (ls *LeagueService) GetH2HLeagueMatches(leagueID int, opts ...H2HMatchesOption) (*models.H2HMatchesFeed, error) {
-	params := h2hMatchesParams{}
-	for _, opt := range opts {
-		opt(&params)
+// Page starts from 1 and event is optional (set 0 to omit it).
+func (ls *LeagueService) GetH2HLeagueMatches(id, page, event int) (*models.H2HLeagueMatchesPage, error) {
+	if id <= 0 {
+		return nil, fmt.Errorf("league ID must be positive")
+	}
+	if page <= 0 {
+		return nil, fmt.Errorf("page must be positive")
+	}
+	if event < 0 {
+		return nil, fmt.Errorf("event cannot be negative")
 	}
 
-	query := url.Values{}
-	if params.event != 0 {
-		query.Set("event", strconv.Itoa(params.event))
-	}
-	if params.page != 0 {
-		query.Set("page", strconv.Itoa(params.page))
+	params := url.Values{}
+	params.Set("page", fmt.Sprintf("%d", page))
+	if event > 0 {
+		params.Set("event", fmt.Sprintf("%d", event))
 	}
 
-	endpoint := fmt.Sprintf(h2hLeagueEndpoint, leagueID)
-	if len(query) > 0 {
-		endpoint += "?" + query.Encode()
-	}
-
+	endpoint := fmt.Sprintf("%s?%s", fmt.Sprintf(h2hLeagueMatchesPath, id), params.Encode())
 	resp, err := ls.client.Get(endpoint)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get H2H league matches: %w", err)
@@ -207,16 +174,17 @@ func (ls *LeagueService) GetH2HLeagueMatches(leagueID int, opts ...H2HMatchesOpt
 	switch resp.StatusCode {
 	case http.StatusOK:
 	case http.StatusNotFound:
-		return nil, fmt.Errorf("%w: H2H league with ID %d", ErrLeagueNotFound, leagueID)
+		return nil, fmt.Errorf("league with ID %d not found: %w", id, ErrLeagueNotFound)
 	case http.StatusBadRequest:
 		body, readErr := io.ReadAll(resp.Body)
 		if readErr != nil {
 			body = nil
 		}
 		return nil, &ErrInvalidH2HQuery{
-			LeagueID:    leagueID,
-			QueryParams: query,
-			Detail:      parseDetail(body),
+			LeagueID: id,
+			Page:     page,
+			Event:    event,
+			Detail:   parseAPIErrorDetail(body),
 		}
 	default:
 		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
@@ -227,17 +195,17 @@ func (ls *LeagueService) GetH2HLeagueMatches(leagueID int, opts ...H2HMatchesOpt
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	var feed models.H2HMatchesFeed
-	if err := json.Unmarshal(body, &feed); err != nil {
+	var matches models.H2HLeagueMatchesPage
+	if err := json.Unmarshal(body, &matches); err != nil {
 		return nil, fmt.Errorf("failed to decode H2H matches data: %w", err)
 	}
 
-	return &feed, nil
+	return &matches, nil
 }
 
-// parseDetail extracts a human-readable message from an error response body
-// such as {"detail": "Not found."}.
-func parseDetail(body []byte) string {
+// parseAPIErrorDetail extracts a human-readable message from an error
+// response body such as {"detail": "Not found."}.
+func parseAPIErrorDetail(body []byte) string {
 	var payload struct {
 		Detail string `json:"detail"`
 	}
@@ -245,4 +213,45 @@ func parseDetail(body []byte) string {
 		return ""
 	}
 	return payload.Detail
+}
+
+// GetH2HLeagueStandings returns paginated H2H league standings.
+func (ls *LeagueService) GetH2HLeagueStandings(id, page int) (*models.H2HLeagueStandings, error) {
+	if id <= 0 {
+		return nil, fmt.Errorf("league ID must be positive")
+	}
+	if page <= 0 {
+		return nil, fmt.Errorf("page must be positive")
+	}
+
+	endpoint := fmt.Sprintf("%s?page_standings=%d", fmt.Sprintf(h2hLeagueStandings, id), page)
+	resp, err := ls.client.Get(endpoint)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get H2H league standings: %w", err)
+	}
+	defer resp.Body.Close()
+
+	switch resp.StatusCode {
+	case http.StatusOK:
+	case http.StatusNotFound:
+		return nil, fmt.Errorf("league with ID %d not found: %w", id, ErrLeagueNotFound)
+	default:
+		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	var standings models.H2HLeagueStandings
+	if err := json.Unmarshal(body, &standings); err != nil {
+		return nil, fmt.Errorf("failed to decode H2H league standings data: %w", err)
+	}
+
+	if standings.League.ID == 0 {
+		return nil, fmt.Errorf("invalid league ID")
+	}
+
+	return &standings, nil
 }

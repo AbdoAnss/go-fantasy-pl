@@ -3,7 +3,7 @@
  "page": 1,
  "results": [
   {
-   "id": 21353851,
+   "id": 21353860,
    "entry_1_entry": 5084051,
    "entry_1_name": "uzzifc",
    "entry_1_player_name": "uzair davids",
@@ -20,14 +20,14 @@
    "entry_2_draw": 0,
    "entry_2_loss": 0,
    "entry_2_total": 3,
-   "is_knockout": false,
+   "is_knockout": true,
    "league": 1221170,
-   "winner": null,
+   "winner": 5084051,
    "seed_value": null,
-   "event": 1,
-   "tiebreak": null,
+   "event": 37,
+   "tiebreak": 1,
    "is_bye": false,
-   "knockout_name": ""
+   "knockout_name": "Round 1"
   }
  ]
 }
