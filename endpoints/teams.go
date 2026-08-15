@@ -8,7 +8,7 @@ import (
 )
 
 // TeamService provides access to team-related data from the FPL API.
-// Teams include attributes such as ID, name, and strength ratings for both 
+// Teams include attributes such as ID, name, and strength ratings for both
 // home and away matches.
 type TeamService struct {
 	client           api.Client

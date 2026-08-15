@@ -2,12 +2,40 @@ package endpoints_test
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// fixtureCounts derives the expected element/history lengths from the
+// committed captures, so these tests survive fixture refreshes.
+func fixtureCounts(t *testing.T) (players, teams, fixtures int) {
+	t.Helper()
+
+	var boot struct {
+		Elements []any `json:"elements"`
+		Teams    []any `json:"teams"`
+	}
+	require.NoError(t, json.Unmarshal(readTestdata(t, "bootstrap-static.json"), &boot))
+
+	var fx []any
+	require.NoError(t, json.Unmarshal(readTestdata(t, "fixtures.json"), &fx))
+
+	return len(boot.Elements), len(boot.Teams), len(fx)
+}
+
+func fixtureHistoryLen(t *testing.T, playerID int) int {
+	t.Helper()
+
+	var payload struct {
+		History []any `json:"history"`
+	}
+	require.NoError(t, json.Unmarshal(readTestdata(t, jsonName("element-summary-%d.json", playerID)), &payload))
+	return len(payload.History)
+}
 
 func TestGetAllPlayersAsync(t *testing.T) {
 	c, server := newEndpointTestClient(t)
@@ -18,7 +46,9 @@ func TestGetAllPlayersAsync(t *testing.T) {
 
 	result := <-c.Players.GetAllPlayersAsync(ctx)
 	require.NoError(t, result.Err)
-	assert.Len(t, result.Value, 3)
+
+	wantPlayers, _, _ := fixtureCounts(t)
+	assert.Len(t, result.Value, wantPlayers)
 }
 
 func TestGetPlayerHistoryAsync(t *testing.T) {
@@ -31,7 +61,7 @@ func TestGetPlayerHistoryAsync(t *testing.T) {
 	result := <-c.Players.GetPlayerHistoryAsync(ctx, 101)
 	require.NoError(t, result.Err)
 	require.NotNil(t, result.Value)
-	assert.Len(t, result.Value.History, 2)
+	assert.Len(t, result.Value.History, fixtureHistoryLen(t, 101))
 }
 
 func TestGetPlayerHistoryAsyncContextCancel(t *testing.T) {
@@ -67,10 +97,11 @@ func TestGetPlayerHistoriesBatch(t *testing.T) {
 		results[result.PlayerID] = len(result.History.History)
 	}
 
-	assert.Len(t, results, len(ids))
-	assert.Equal(t, 2, results[101])
-	assert.Equal(t, 2, results[102])
-	assert.Equal(t, 1, results[103])
+	require.Len(t, results, len(ids), "every requested player should report exactly once")
+	for _, id := range ids {
+		assert.Equal(t, fixtureHistoryLen(t, id), results[id],
+			"player %d history length should match the capture", id)
+	}
 }
 
 func TestGetAllFixturesAsync(t *testing.T) {
@@ -82,7 +113,9 @@ func TestGetAllFixturesAsync(t *testing.T) {
 
 	result := <-c.Fixtures.GetAllFixturesAsync(ctx)
 	require.NoError(t, result.Err)
-	assert.Len(t, result.Value, 2)
+
+	_, _, wantFixtures := fixtureCounts(t)
+	assert.Len(t, result.Value, wantFixtures)
 }
 
 func TestGetAllTeamsAsync(t *testing.T) {
@@ -94,7 +127,9 @@ func TestGetAllTeamsAsync(t *testing.T) {
 
 	result := <-c.Teams.GetAllTeamsAsync(ctx)
 	require.NoError(t, result.Err)
-	assert.Len(t, result.Value, 3)
+
+	_, wantTeams, _ := fixtureCounts(t)
+	assert.Len(t, result.Value, wantTeams)
 }
 
 func TestConcurrentAsyncRequests(t *testing.T) {
@@ -116,7 +151,8 @@ func TestConcurrentAsyncRequests(t *testing.T) {
 	require.NoError(t, fixturesResult.Err)
 	require.NoError(t, teamsResult.Err)
 
-	assert.Len(t, playersResult.Value, 3)
-	assert.Len(t, fixturesResult.Value, 2)
-	assert.Len(t, teamsResult.Value, 3)
+	wantPlayers, wantTeams, wantFixtures := fixtureCounts(t)
+	assert.Len(t, playersResult.Value, wantPlayers)
+	assert.Len(t, fixturesResult.Value, wantFixtures)
+	assert.Len(t, teamsResult.Value, wantTeams)
 }

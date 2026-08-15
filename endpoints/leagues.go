@@ -79,7 +79,7 @@ func (ls *LeagueService) GetClassicLeagueStandings(id, page int) (*models.Classi
 	switch resp.StatusCode {
 	case http.StatusOK:
 	case http.StatusNotFound:
-		return nil, fmt.Errorf("league with ID %d not found", id)
+		return nil, fmt.Errorf("league with ID %d not found: %w", id, ErrLeagueNotFound)
 	default:
 		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
