@@ -19,6 +19,32 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  conformance:
+    name: Schema conformance
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Download dependencies
+        run: go mod download
+
+      # Hermetic schema conformance: validates our models against the
+      # committed API captures (unmapped keys, orphaned fields, fidelity).
+      # Failures here mean the FPL API schema drifted relative to
+      # testdata/ — update the models or the allowlists, then `make recapture`.
+      - name: Run schema conformance suite
+        run: |
+          go test -race -count=1 -run "Schema" ./endpoints/ -v
+          go test -race -count=1 ./internal/conformance/
+
   verify:
     name: Verify
     runs-on: ubuntu-latest
