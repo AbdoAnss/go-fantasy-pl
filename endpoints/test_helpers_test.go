@@ -57,10 +57,32 @@ func newEndpointTestClient(t *testing.T) (*client.Client, *httptest.Server) {
 func writeTestdata(t *testing.T, w http.ResponseWriter, name string) {
 	t.Helper()
 
+	_, err := w.Write(readTestdata(t, name))
+	require.NoError(t, err)
+}
+
+// readTestdata returns the raw bytes of a committed capture. Fixtures are
+// real API responses (refreshed via `make recapture`), so tests must assert
+// schema and invariants rather than specific values.
+func readTestdata(t *testing.T, name string) []byte {
+	t.Helper()
+
 	path := filepath.Join("testdata", name)
 	body, err := os.ReadFile(path)
 	require.NoError(t, err)
+	return body
+}
 
-	_, err = w.Write(body)
-	require.NoError(t, err)
+// writeTestdataFile persists a fresh capture; used by the live harness in
+// recapture mode.
+func writeTestdataFile(t *testing.T, name string, body []byte) {
+	t.Helper()
+
+	path := filepath.Join("testdata", name)
+	require.NoError(t, os.WriteFile(path, body, 0o644))
+}
+
+// jsonName formats a testdata filename.
+func jsonName(format string, args ...any) string {
+	return fmt.Sprintf(format, args...)
 }

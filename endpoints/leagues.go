@@ -2,6 +2,7 @@ package endpoints
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -17,6 +18,29 @@ const (
 	h2hLeagueStandings    = "/leagues-h2h/%d/standings/"
 	maxPageCache          = 3 // Only cache first 3 pages
 )
+
+// ErrLeagueNotFound is wrapped into every league error caused by an HTTP 404,
+// so callers can match it with errors.Is regardless of league type.
+var ErrLeagueNotFound = errors.New("league not found")
+
+// ErrInvalidH2HQuery is returned when the FPL API rejects an H2H matches
+// request with HTTP 400. In practice this happens for an event value outside
+// the valid gameweek range (e.g. event=999).
+type ErrInvalidH2HQuery struct {
+	LeagueID int
+	Page     int
+	Event    int
+	Detail   string
+}
+
+func (e *ErrInvalidH2HQuery) Error() string {
+	msg := fmt.Sprintf("invalid query for H2H league %d (page=%d, event=%d): the FPL API rejected the request with 400",
+		e.LeagueID, e.Page, e.Event)
+	if e.Detail != "" {
+		msg += ": " + e.Detail
+	}
+	return msg
+}
 
 // LeagueService provides methods for fetching league standings and details,
 // supporting both classic and head-to-head (H2H) leagues.
@@ -55,7 +79,7 @@ func (ls *LeagueService) GetClassicLeagueStandings(id, page int) (*models.Classi
 	switch resp.StatusCode {
 	case http.StatusOK:
 	case http.StatusNotFound:
-		return nil, fmt.Errorf("league with ID %d not found", id)
+		return nil, fmt.Errorf("league with ID %d not found: %w", id, ErrLeagueNotFound)
 	default:
 		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
@@ -96,13 +120,18 @@ func (ls *LeagueService) validateLeague(league *models.ClassicLeague) error {
 
 // GetTotalPages calculates the total number of pages in a classic league.
 func (ls *LeagueService) GetTotalPages(league *models.ClassicLeague) int {
-	if league == nil || len(league.Standings.Results) == 0 {
+	if league == nil {
 		return 0
 	}
 
+	// MaxEntries, when the league declares it, determines pagination even if
+	// the fetched page has no rows yet (e.g. pre-season).
 	totalEntries := len(league.Standings.Results)
 	if league.League.GetMaxEntries() > 0 {
 		totalEntries = league.League.GetMaxEntries()
+	}
+	if totalEntries == 0 {
+		return 0
 	}
 
 	entriesPerPage := 50 // FPL default
@@ -110,6 +139,18 @@ func (ls *LeagueService) GetTotalPages(league *models.ClassicLeague) int {
 }
 
 // GetH2HLeagueMatches returns paginated H2H league match results.
+//
+// Semantics (mirroring the live FPL API):
+//   - Omitting event (0) returns a paginated mixed feed of matches spanning
+//     multiple gameweeks.
+//   - Setting event filters matches to that gameweek (or knockout round when
+//     the value falls in the league's knockout range); has_next reflects the
+//     filtered query, so it can differ from the mixed feed.
+//   - Knockout matches have is_knockout=true, a non-nil winner, and a
+//     knockout_name such as "Round 1".
+//   - An event outside the valid gameweek range (e.g. 999) makes the API
+//     respond with HTTP 400, surfaced as *ErrInvalidH2HQuery.
+//
 // Page starts from 1 and event is optional (set 0 to omit it).
 func (ls *LeagueService) GetH2HLeagueMatches(id, page, event int) (*models.H2HLeagueMatchesPage, error) {
 	if id <= 0 {
@@ -138,7 +179,18 @@ func (ls *LeagueService) GetH2HLeagueMatches(id, page, event int) (*models.H2HLe
 	switch resp.StatusCode {
 	case http.StatusOK:
 	case http.StatusNotFound:
-		return nil, fmt.Errorf("league with ID %d not found", id)
+		return nil, fmt.Errorf("league with ID %d not found: %w", id, ErrLeagueNotFound)
+	case http.StatusBadRequest:
+		body, readErr := io.ReadAll(resp.Body)
+		if readErr != nil {
+			body = nil
+		}
+		return nil, &ErrInvalidH2HQuery{
+			LeagueID: id,
+			Page:     page,
+			Event:    event,
+			Detail:   parseAPIErrorDetail(body),
+		}
 	default:
 		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
@@ -150,10 +202,22 @@ func (ls *LeagueService) GetH2HLeagueMatches(id, page, event int) (*models.H2HLe
 
 	var matches models.H2HLeagueMatchesPage
 	if err := json.Unmarshal(body, &matches); err != nil {
-		return nil, fmt.Errorf("failed to decode H2H league matches data: %w", err)
+		return nil, fmt.Errorf("failed to decode H2H matches data: %w", err)
 	}
 
 	return &matches, nil
+}
+
+// parseAPIErrorDetail extracts a human-readable message from an error
+// response body such as {"detail": "Not found."}.
+func parseAPIErrorDetail(body []byte) string {
+	var payload struct {
+		Detail string `json:"detail"`
+	}
+	if err := json.Unmarshal(body, &payload); err != nil {
+		return ""
+	}
+	return payload.Detail
 }
 
 // GetH2HLeagueStandings returns paginated H2H league standings.
@@ -175,7 +239,7 @@ func (ls *LeagueService) GetH2HLeagueStandings(id, page int) (*models.H2HLeagueS
 	switch resp.StatusCode {
 	case http.StatusOK:
 	case http.StatusNotFound:
-		return nil, fmt.Errorf("league with ID %d not found", id)
+		return nil, fmt.Errorf("league with ID %d not found: %w", id, ErrLeagueNotFound)
 	default:
 		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}

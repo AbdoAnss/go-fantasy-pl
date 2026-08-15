@@ -36,11 +36,50 @@ gofmt -w .
 go test ./...
 ```
 
+Or with the Makefile: `make test`, `make live-test`, `make recapture`.
+
 If you have `golangci-lint` installed:
 
 ```bash
 golangci-lint run
 ```
+
+## Testing Strategy
+
+Our contract with the FPL API is schema-shaped, not value-shaped: we care
+when the API adds, removes, or renames fields — never about specific player
+or team values. Tests therefore assert schema and invariants, never
+real-world literals like team names or match IDs.
+
+Three tiers:
+
+1. **Hermetic schema conformance** (runs in CI). Every committed capture in
+   `endpoints/testdata/` is decoded into our models and validated by
+   `internal/conformance.Check`: every API key must map to a model field (or
+   an explicit allowlist entry in `endpoints/conformance_specs_test.go`),
+   every model field must have an API key, and scalar values must match.
+2. **Hermetic behavior tests.** Endpoints are exercised via `httptest`
+   servers serving the committed captures. Expectations (counts, IDs) are
+   derived from the capture files themselves or from invariants, so
+   refreshing captures never breaks them.
+3. **Live conformance** (opt-in, never blocks PRs). `make live-test` walks
+   `endpoints/testdata/live_ids.json` against the real API and applies the
+   same conformance rules. Leagues are purged between seasons; a 404 for a
+   configured ID is a skip, not a failure — update `live_ids.json` at the
+   start of each season. A scheduled workflow runs this weekly and opens an
+   issue on drift.
+
+### Refreshing fixtures
+
+```bash
+make recapture
+```
+
+Re-fetches the live payloads and rewrites the captures in
+`endpoints/testdata/`. The hermetic suite must stay green afterwards; if it
+fails, the schema genuinely changed — update the models or the allowlists in
+`endpoints/conformance_specs_test.go` (each allowlist entry is a deliberate,
+reviewable decision not to map that field).
 
 ## Code Guidelines
 

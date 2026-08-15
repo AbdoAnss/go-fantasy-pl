@@ -10,7 +10,7 @@ import (
 )
 
 // RedisCache is an implementation of the Cache interface backed by a Redis server.
-// It is ideal for distributed environments where multiple SDK instances need 
+// It is ideal for distributed environments where multiple SDK instances need
 // to share a common cache.
 type RedisCache struct {
 	client *redis.Client
