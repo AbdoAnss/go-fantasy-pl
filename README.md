@@ -155,7 +155,6 @@ c, err := client.NewClient(
 The GitHub Actions pipeline now covers:
 
 - formatting, module tidy checks, vet, tests, and builds on pull requests and pushes
-- Docker image publishing to GHCR on `main` and version tags
 - optional deployment webhook triggering on `main`
 
 Optional repository secrets:
