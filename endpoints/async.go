@@ -107,3 +107,48 @@ func (ts *TeamService) GetAllTeamsAsync(ctx context.Context) <-chan Result[[]mod
 	}()
 	return ch
 }
+
+// GetManagerAsync fetches a manager's profile asynchronously and returns a
+// channel that receives the result.
+func (ms *ManagerService) GetManagerAsync(ctx context.Context, id int) <-chan Result[*models.Manager] {
+	ch := make(chan Result[*models.Manager], 1)
+	go func() {
+		defer close(ch)
+		manager, err := ms.GetManager(id)
+		select {
+		case ch <- Result[*models.Manager]{Value: manager, Err: err}:
+		case <-ctx.Done():
+		}
+	}()
+	return ch
+}
+
+// GetCurrentTeamAsync fetches a manager's current team selection asynchronously
+// and returns a channel that receives the result.
+func (ms *ManagerService) GetCurrentTeamAsync(ctx context.Context, managerID int) <-chan Result[*models.ManagerTeam] {
+	ch := make(chan Result[*models.ManagerTeam], 1)
+	go func() {
+		defer close(ch)
+		team, err := ms.GetCurrentTeam(managerID)
+		select {
+		case ch <- Result[*models.ManagerTeam]{Value: team, Err: err}:
+		case <-ctx.Done():
+		}
+	}()
+	return ch
+}
+
+// GetManagerHistoryAsync fetches a manager's season and gameweek history
+// asynchronously and returns a channel that receives the result.
+func (ms *ManagerService) GetManagerHistoryAsync(ctx context.Context, id int) <-chan Result[*models.ManagerHistory] {
+	ch := make(chan Result[*models.ManagerHistory], 1)
+	go func() {
+		defer close(ch)
+		history, err := ms.GetManagerHistory(id)
+		select {
+		case ch <- Result[*models.ManagerHistory]{Value: history, Err: err}:
+		case <-ctx.Done():
+		}
+	}()
+	return ch
+}
