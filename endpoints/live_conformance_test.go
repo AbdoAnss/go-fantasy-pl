@@ -315,15 +315,18 @@ func TestLiveConformance(t *testing.T) {
 				"player %d explain contributions should add up to total_points", el.ID)
 		}
 
-		// Library behavior.
+		// Library behavior: fetch through the service and assert internal
+		// consistency of that single snapshot. Two separate upstream fetches
+		// can straddle a goal/bonus update mid-match, so cross-fetch equality
+		// would be a race, not an invariant.
 		got, err := c.Live.GetEventLive(eventID)
 		require.NoError(t, err)
 		require.Len(t, got.Elements, len(live.Elements))
 
-		first := live.Elements[0].ID
+		first := got.Elements[0].ID
 		points, ok := got.PointsFor(first)
 		require.True(t, ok, "PointsFor should find the first element")
-		assert.Equal(t, live.Elements[0].Stats.TotalPoints, points,
+		assert.Equal(t, got.Elements[0].Stats.TotalPoints, points,
 			"PointsFor should echo the API total for that player")
 
 		// Out-of-range gameweeks produce the typed domain error.

@@ -1,11 +1,12 @@
 name: Live Conformance
 
-# Weekly drift check against the real FPL API. Never blocks PRs; on failure
-# it opens an issue so the schema change can be triaged and the models or
-# allowlists updated.
+# Daily drift check against the real FPL API while the season is active:
+# schema or behavior changes surface within 24h. Never blocks PRs; on failure
+# it opens an issue so the change can be triaged immediately and the models
+# or allowlists updated.
 on:
   schedule:
-    - cron: "0 6 * * 1" # Mondays 06:00 UTC
+    - cron: "0 6 * * *" # every day 06:00 UTC
   workflow_dispatch:
 
 permissions:
