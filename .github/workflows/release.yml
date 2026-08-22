@@ -25,6 +25,8 @@ jobs:
     name: Verify before tagging
     if: github.ref == 'refs/heads/main' # manual dispatches are main-only
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     timeout-minutes: 10
     steps:
       - name: Checkout code
