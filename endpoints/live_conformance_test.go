@@ -292,6 +292,17 @@ func TestLiveConformance(t *testing.T) {
 		conformance.Check(t, conformance.Extract(t, raw, "elements", 0),
 			conformance.Spec{Model: &live.Elements[0], Allowlist: eventLiveAllowlist})
 
+		// Check only descends one array level, so validate the explain tree
+		// of the first element explicitly as well.
+		if explain := live.Elements[0].Explain; len(explain) > 0 {
+			conformance.Check(t, conformance.Extract(t, raw, "elements", 0, "explain", 0),
+				conformance.Spec{Model: &explain[0], Allowlist: eventLiveAllowlist})
+			if len(explain[0].Stats) > 0 {
+				conformance.Check(t, conformance.Extract(t, raw, "elements", 0, "explain", 0, "stats", 0),
+					conformance.Spec{Model: &explain[0].Stats[0], Allowlist: eventLiveAllowlist})
+			}
+		}
+
 		// Explain breakdowns must sum (with modifications) to total_points.
 		for _, el := range live.Elements {
 			sum := 0.0

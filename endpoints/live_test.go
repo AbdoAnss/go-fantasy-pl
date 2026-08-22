@@ -2,9 +2,14 @@ package endpoints_test
 
 import (
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 
+	"github.com/AbdoAnss/go-fantasy-pl/client"
 	"github.com/AbdoAnss/go-fantasy-pl/endpoints"
+	"github.com/AbdoAnss/go-fantasy-pl/internal/cache"
 	"github.com/AbdoAnss/go-fantasy-pl/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -35,7 +40,15 @@ func TestGetEventLive(t *testing.T) {
 		assert.Positive(t, el.ID)
 		assert.GreaterOrEqual(t, el.Stats.TotalPoints, -15, "totals can be negative (red cards, own goals) but not unboundedly")
 		assert.GreaterOrEqual(t, el.Stats.Bps, -30, "BPS can go negative via red-card deductions")
-		assert.LessOrEqual(t, el.Stats.Bonus, 3, "bonus never exceeds 3 per fixture")
+		// Bonus is capped per fixture but aggregates across every fixture in
+		// the gameweek, so bound it by the number of fixtures the element
+		// explains: double gameweeks can legitimately report up to 3 each.
+		fixturesFeatured := len(el.Explain)
+		if fixturesFeatured == 0 {
+			fixturesFeatured = 1
+		}
+		assert.LessOrEqual(t, el.Stats.Bonus, 3*fixturesFeatured,
+			"bonus must not exceed 3 per fixture featured")
 		for _, fx := range el.Explain {
 			assert.Positive(t, fx.Fixture)
 			require.NotEmpty(t, fx.Stats)
@@ -52,16 +65,38 @@ func TestGetEventLive(t *testing.T) {
 }
 
 func TestGetEventLiveCaching(t *testing.T) {
-	c, server := newEndpointTestClient(t)
+	endpoints.SetSharedCache(cache.NewMemoryCache())
+
+	// A counting handler lets us prove the cache actually short-circuits;
+	// serving identical bytes alone cannot distinguish a cached second call
+	// from an uncached one.
+	var fetches atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Path == "/event/1/live/" {
+			fetches.Add(1)
+			writeTestdata(t, w, "live-1.json")
+			return
+		}
+		http.NotFound(w, r)
+	}))
 	defer server.Close()
+
+	c, err := client.NewClient(
+		client.WithBaseURL(server.URL),
+		client.WithMemoryCache(),
+	)
+	require.NoError(t, err)
 
 	first, err := c.Live.GetEventLive(1)
 	require.NoError(t, err)
+	assert.EqualValues(t, 1, fetches.Load(), "first call should hit upstream")
 
 	second, err := c.Live.GetEventLive(1)
 	require.NoError(t, err)
 
 	assert.Equal(t, first, second, "cached result should be identical")
+	assert.EqualValues(t, 1, fetches.Load(), "second call must be served from cache, not upstream")
 }
 
 func TestGetNonExistentEventLive(t *testing.T) {

@@ -44,9 +44,10 @@ func NewLiveService(client api.Client) *LiveService {
 
 // GetEventLive returns the live points data for every player in a gameweek.
 //
-// The result covers all players, not just those in a specific squad; join
-// with manager picks (via Managers.GetCurrentTeam or GetGameWeekTeam) to
-// compute a manager's live total: sum(stats.TotalPoints * multiplier).
+// The payload is gameweek-scoped and manager-agnostic: one request covers
+// all players, so a manager's live total is computed by joining these stats
+// with their picks (via Managers.GetCurrentTeam) and summing
+// stats.TotalPoints * multiplier.
 //
 // Note that bonus points are provisional while fixtures are in progress,
 // and upstream CDN caching means data can lag reality by a few minutes.

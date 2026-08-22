@@ -16,9 +16,6 @@ on:
     branches: [main]
   workflow_dispatch:
 
-permissions:
-  contents: write
-
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
@@ -26,6 +23,7 @@ concurrency:
 jobs:
   verify:
     name: Verify before tagging
+    if: github.ref == 'refs/heads/main' # manual dispatches are main-only
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -36,6 +34,7 @@ jobs:
         uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
+          cache: true
 
       - name: Test
         run: go test -race ./...
@@ -43,8 +42,11 @@ jobs:
   tag:
     name: Tag and publish VERSION
     needs: verify
+    if: github.ref == 'refs/heads/main' # manual dispatches are main-only
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: write # only the publishing job needs write scope
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -55,6 +57,10 @@ jobs:
         name: Read VERSION and check for an existing tag
         run: |
           ver="$(tr -d '[:space:]' < VERSION)"
+          if ! [[ "$ver" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::VERSION must contain a semver X.Y.Z string, got '$ver'"
+            exit 1
+          fi
           echo "version=$ver" >> "$GITHUB_OUTPUT"
           if git rev-parse -q --verify "refs/tags/v$ver" >/dev/null; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
@@ -65,18 +71,27 @@ jobs:
 
       - name: Push tag
         if: steps.version.outputs.exists == 'false'
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag -a "v${{ steps.version.outputs.version }}" -m "go-fantasy-pl v${{ steps.version.outputs.version }}"
-          git push origin "v${{ steps.version.outputs.version }}"
+          git tag -a "v${RELEASE_VERSION}" -m "go-fantasy-pl v${RELEASE_VERSION}"
+          git push origin "v${RELEASE_VERSION}"
 
       - name: Publish GitHub release
         if: steps.version.outputs.exists == 'false'
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
         run: |
-          gh release create "v${{ steps.version.outputs.version }}" \
-            --title "v${{ steps.version.outputs.version }}" \
+          # Idempotency: if the tag landed but release creation failed, a
+          # re-run must still be able to (re)publish the missing release.
+          if gh release view "v${RELEASE_VERSION}" >/dev/null 2>&1; then
+            echo "release v${RELEASE_VERSION} already exists, skipping"
+            exit 0
+          fi
+          gh release create "v${RELEASE_VERSION}" \
+            --title "v${RELEASE_VERSION}" \
             --generate-notes \
             --verify-tag
