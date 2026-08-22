@@ -198,6 +198,15 @@ Optional repository secrets:
 
 Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
+## Releasing
+
+Releases are driven by the `VERSION` file: bump it in a PR, and the release
+workflow on `main` verifies the suite, pushes the `v<VERSION>` tag, and
+publishes GitHub release notes — no manual tagging. Merging without a bump
+is a no-op. Consumers can also pin untagged commits directly
+(`go get github.com/AbdoAnss/go-fantasy-pl@<ref>` resolves to a
+pseudo-version).
+
 ## License
 
 This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
