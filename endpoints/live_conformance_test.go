@@ -277,6 +277,68 @@ func TestLiveConformance(t *testing.T) {
 		})
 	}
 
+	t.Run("Live", func(t *testing.T) {
+		eventID := currentGameweek
+		if eventID == 0 {
+			eventID = 1 // pre-season fallback: GW1 always exists
+		}
+		raw := mustGetRaw(t, c, fmt.Sprintf("/event/%d/live/", eventID))
+
+		var live models.EventLive
+		require.NoError(t, json.Unmarshal(raw, &live))
+		require.NotEmpty(t, live.Elements)
+
+		conformance.Check(t, raw, conformance.Spec{Model: &live, Allowlist: eventLiveAllowlist})
+		conformance.Check(t, conformance.Extract(t, raw, "elements", 0),
+			conformance.Spec{Model: &live.Elements[0], Allowlist: eventLiveAllowlist})
+
+		// Check only descends one array level, so validate the explain tree
+		// of the first element explicitly as well.
+		if explain := live.Elements[0].Explain; len(explain) > 0 {
+			conformance.Check(t, conformance.Extract(t, raw, "elements", 0, "explain", 0),
+				conformance.Spec{Model: &explain[0], Allowlist: eventLiveAllowlist})
+			if len(explain[0].Stats) > 0 {
+				conformance.Check(t, conformance.Extract(t, raw, "elements", 0, "explain", 0, "stats", 0),
+					conformance.Spec{Model: &explain[0].Stats[0], Allowlist: eventLiveAllowlist})
+			}
+		}
+
+		// Explain breakdowns must sum (with modifications) to total_points.
+		for _, el := range live.Elements {
+			sum := 0.0
+			for _, fx := range el.Explain {
+				for _, st := range fx.Stats {
+					sum += st.Points + st.PointsModification
+				}
+			}
+			assert.InDeltaf(t, float64(el.Stats.TotalPoints), sum, 0.001,
+				"player %d explain contributions should add up to total_points", el.ID)
+		}
+
+		// Library behavior: fetch through the service and assert internal
+		// consistency of that single snapshot. Two separate upstream fetches
+		// can straddle a goal/bonus update mid-match, so cross-fetch equality
+		// would be a race, not an invariant.
+		got, err := c.Live.GetEventLive(eventID)
+		require.NoError(t, err)
+		require.Len(t, got.Elements, len(live.Elements))
+
+		first := got.Elements[0].ID
+		points, ok := got.PointsFor(first)
+		require.True(t, ok, "PointsFor should find the first element")
+		assert.Equal(t, got.Elements[0].Stats.TotalPoints, points,
+			"PointsFor should echo the API total for that player")
+
+		// Out-of-range gameweeks produce the typed domain error.
+		_, err = c.Live.GetEventLive(999)
+		var notFound *endpoints.EventLiveNotFoundError
+		assert.ErrorAs(t, err, &notFound)
+
+		if recapture {
+			writeTestdataFile(t, jsonName("live-%d.json", eventID), raw)
+		}
+	})
+
 	t.Run("NotFound", func(t *testing.T) {
 		_, err := c.Managers.GetManager(99999999)
 		assert.Error(t, err)

@@ -37,6 +37,13 @@ func newEndpointTestClient(t *testing.T) (*client.Client, *httptest.Server) {
 			writeTestdata(t, w, "bootstrap-static.json")
 		case r.URL.Path == "/fixtures/":
 			writeTestdata(t, w, "fixtures.json")
+		case strings.HasPrefix(r.URL.Path, "/event/") && strings.HasSuffix(r.URL.Path, "/live/"):
+			id := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/event/"), "/live/")
+			if _, err := os.Stat(filepath.Join("testdata", fmt.Sprintf("live-%s.json", id))); err != nil {
+				http.NotFound(w, r)
+				return
+			}
+			writeTestdata(t, w, fmt.Sprintf("live-%s.json", id))
 		case strings.HasPrefix(r.URL.Path, "/element-summary/"):
 			id := strings.TrimPrefix(strings.TrimSuffix(r.URL.Path, "/"), "/element-summary/")
 			writeTestdata(t, w, fmt.Sprintf("element-summary-%s.json", id))

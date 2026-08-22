@@ -56,6 +56,29 @@ func main() {
 }
 ```
 
+## Live Gameweek Points
+
+`c.Live` exposes the gameweek live endpoint (`/event/{id}/live/`), which
+reports in-play points and stats for every player. A manager's live total is
+computed by joining these stats with their picks (multiplier 2 for captain,
+0 for bench):
+
+```go
+live, err := c.Live.GetEventLive(currentGameweek)
+picks, err := c.Managers.GetCurrentTeam(managerID)
+
+total := 0
+for _, pick := range picks.Picks {
+	if pts, ok := live.PointsFor(pick.Element); ok {
+		total += pts * pick.Multiplier
+	}
+}
+```
+
+Freshness caveats: bonus points are provisional while fixtures are in play,
+the upstream CDN may serve data up to a few minutes old, and the SDK caches
+responses for only 30 seconds to stay close to the source.
+
 ## Caching
 
 `client.NewClient()` now prefers Redis by default.
@@ -174,6 +197,15 @@ Optional repository secrets:
 ## Contributing
 
 Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+## Releasing
+
+Releases are driven by the `VERSION` file: bump it in a PR, and the release
+workflow on `main` verifies the suite, pushes the `v<VERSION>` tag, and
+publishes GitHub release notes — no manual tagging. Merging without a bump
+is a no-op. Consumers can also pin untagged commits directly
+(`go get github.com/AbdoAnss/go-fantasy-pl@<ref>` resolves to a
+pseudo-version).
 
 ## License
 

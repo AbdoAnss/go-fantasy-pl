@@ -138,6 +138,21 @@ func (ms *ManagerService) GetCurrentTeamAsync(ctx context.Context, managerID int
 	return ch
 }
 
+// GetEventLiveAsync fetches a gameweek's live points data asynchronously and
+// returns a channel that receives the result.
+func (ls *LiveService) GetEventLiveAsync(ctx context.Context, eventID int) <-chan Result[*models.EventLive] {
+	ch := make(chan Result[*models.EventLive], 1)
+	go func() {
+		defer close(ch)
+		live, err := ls.GetEventLive(eventID)
+		select {
+		case ch <- Result[*models.EventLive]{Value: live, Err: err}:
+		case <-ctx.Done():
+		}
+	}()
+	return ch
+}
+
 // GetManagerHistoryAsync fetches a manager's season and gameweek history
 // asynchronously and returns a channel that receives the result.
 func (ms *ManagerService) GetManagerHistoryAsync(ctx context.Context, id int) <-chan Result[*models.ManagerHistory] {

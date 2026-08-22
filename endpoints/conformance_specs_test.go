@@ -8,7 +8,7 @@ package endpoints_test
 // when the API adds keys, conformance failures tell you exactly what to add
 // where — the model, if we want the data, or this file, if we don't.
 //
-// Last reconciled against the live API on 2026-08-15 (2026/27 pre-season).
+// Last reconciled against the live API on 2026-08-22 (2026/27, GW1 in play).
 
 // bootstrapAllowlist covers top-level /bootstrap-static/ keys outside the
 // endpoints.Response wrapper.
@@ -21,6 +21,11 @@ var bootstrapAllowlist = []string{
 	"total_players",
 }
 
+// eventLiveAllowlist: every key in /event/{id}/live/ payloads is mapped onto
+// the EventLive model; declared so a future API addition fails loudly here
+// instead of silently zero-valuing.
+var eventLiveAllowlist = []string{}
+
 // teamAllowlist: "link_url" was added by the API and is not yet mapped.
 var teamAllowlist = []string{
 	"link_url",
@@ -29,6 +34,8 @@ var teamAllowlist = []string{
 // playerAllowlist: statistics, per-90 variants, rank variants, and metadata
 // the Player model does not currently expose. Several of these (bonus, bps,
 // saves, tackles, own_goals, penalties_*) look like mapping backlog.
+// price_change_* keys are the API's internal price-rise scheduling machinery;
+// "price_change_percent" was already unmapped for the same reason.
 var playerAllowlist = []string{
 	"birth_date",
 	"bonus",
@@ -65,6 +72,10 @@ var playerAllowlist = []string{
 	"penalties_saved",
 	"penalties_text",
 	"photo",
+	"price_change_calibrating",
+	"price_change_hourly_rate",
+	"price_change_locked_until",
+	"price_change_projections",
 	"price_change_percent",
 	"recoveries",
 	"region",
@@ -96,13 +107,9 @@ var gameSettingsAllowlist = []string{
 	"underdog_differential",
 }
 
-// pastHistoryStatsAllowlist: newer per-season statistics not yet mapped.
-var pastHistoryStatsAllowlist = []string{
-	"clearances_blocks_interceptions",
-	"defensive_contribution",
-	"recoveries",
-	"tackles",
-}
+// pastHistoryStatsAllowlist: nothing is currently unmapped on PastHistoryStats;
+// kept as an explicit empty decision so future API additions surface here.
+var pastHistoryStatsAllowlist = []string{}
 
 // managerAllowlist covers /entry/ keys not exposed on Manager.
 var managerAllowlist = []string{

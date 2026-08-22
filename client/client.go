@@ -42,6 +42,8 @@ type Client struct {
 	Managers *endpoints.ManagerService
 	// Leagues provides methods for fetching league standings and details.
 	Leagues *endpoints.LeagueService
+	// Live provides access to gameweek live points data.
+	Live *endpoints.LiveService
 }
 
 // NewClient creates and returns a new FPL API client.
@@ -87,6 +89,7 @@ func NewClient(opts ...Option) (*Client, error) {
 	c.Managers = endpoints.NewManagerService(c, c.Bootstrap)
 	c.Fixtures = endpoints.NewFixtureService(c)
 	c.Leagues = endpoints.NewLeagueService(c)
+	c.Live = endpoints.NewLiveService(c)
 
 	return c, nil
 }

@@ -58,14 +58,17 @@ func TestGetFixture(t *testing.T) {
 	assert.Equal(t, id, fixture.ID, "returned fixture should echo the requested ID")
 	assert.NotNil(t, fixture.KickoffTime)
 
-	// Finished matches carry scores; scheduled ones do not.
+	// Finished matches carry scores; scheduled ones do not. Fixtures that
+	// started but have not finished may already report live scores.
 	if fixture.Finished {
 		require.NotNil(t, fixture.TeamHScore)
 		require.NotNil(t, fixture.TeamAScore)
 		assert.GreaterOrEqual(t, fixture.GetTeamHScore(), 0)
 		assert.GreaterOrEqual(t, fixture.GetTeamAScore(), 0)
-	} else {
-		assert.False(t, fixture.Started)
+	}
+	if !fixture.Started {
+		assert.Nil(t, fixture.TeamHScore)
+		assert.Nil(t, fixture.TeamAScore)
 	}
 }
 

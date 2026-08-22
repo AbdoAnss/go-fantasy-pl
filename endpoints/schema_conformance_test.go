@@ -110,3 +110,31 @@ func TestH2HLeagueStandingsSchema(t *testing.T) {
 
 	conformance.Check(t, raw, conformance.Spec{Model: &standings})
 }
+
+func TestEventLiveSchema(t *testing.T) {
+	raw := readTestdata(t, "live-1.json")
+
+	var live models.EventLive
+	require.NoError(t, json.Unmarshal(raw, &live))
+	require.NotEmpty(t, live.Elements)
+
+	conformance.Check(t, raw, conformance.Spec{Model: &live, Allowlist: eventLiveAllowlist})
+
+	conformance.Check(t,
+		conformance.Extract(t, raw, "elements", 0),
+		conformance.Spec{Model: &live.Elements[0], Allowlist: eventLiveAllowlist})
+
+	// Check only descends one array level, so validate the explain tree
+	// explicitly as well.
+	if explain := live.Elements[0].Explain; len(explain) > 0 {
+		conformance.Check(t,
+			conformance.Extract(t, raw, "elements", 0, "explain", 0),
+			conformance.Spec{Model: &explain[0], Allowlist: eventLiveAllowlist})
+
+		if len(explain[0].Stats) > 0 {
+			conformance.Check(t,
+				conformance.Extract(t, raw, "elements", 0, "explain", 0, "stats", 0),
+				conformance.Spec{Model: &explain[0].Stats[0], Allowlist: eventLiveAllowlist})
+		}
+	}
+}

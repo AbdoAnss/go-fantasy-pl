@@ -38,6 +38,20 @@ type GameWeekStats struct {
 	ExpectedAssists          string `json:"expected_assists"`           // Add expected_assists field
 	ExpectedGoalInvolvements string `json:"expected_goal_involvements"` // Add expected_goal_involvements field
 	ExpectedGoalsConceded    string `json:"expected_goals_conceded"`    // Add expected_goals_conceded field
+
+	// Defensive-action counts added by the API from 2025/26 onwards.
+	ClearancesBlocksInterceptions int `json:"clearances_blocks_interceptions"`
+	Recoveries                    int `json:"recoveries"`
+	Tackles                       int `json:"tackles"`
+	DefensiveContribution         int `json:"defensive_contribution"`
+
+	// Ownership and valuation context for the gameweek.
+	Value            int  `json:"value"`             // Current price in tenths of a million
+	Selected         int  `json:"selected"`          // Managers owning the player this gameweek
+	TransfersIn      int  `json:"transfers_in"`      // Transfers in during the gameweek
+	TransfersOut     int  `json:"transfers_out"`     // Transfers out during the gameweek
+	TransfersBalance int  `json:"transfers_balance"` // Net transfers for the gameweek
+	Modified         bool `json:"modified"`          // Stats were adjusted after the fixture ended
 }
 
 type FixtureStats struct {
@@ -85,4 +99,10 @@ type PastHistoryStats struct {
 	ExpectedAssists          string `json:"expected_assists"`           // Add expected_assists field
 	ExpectedGoalInvolvements string `json:"expected_goal_involvements"` // Add expected_goal_involvements field
 	ExpectedGoalsConceded    string `json:"expected_goals_conceded"`    // Add expected_goals_conceded field
+
+	// Defensive-action counts added by the API from 2025/26 onwards.
+	ClearancesBlocksInterceptions int `json:"clearances_blocks_interceptions"`
+	Recoveries                    int `json:"recoveries"`
+	Tackles                       int `json:"tackles"`
+	DefensiveContribution         int `json:"defensive_contribution"`
 }

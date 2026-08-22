@@ -1,0 +1,99 @@
+name: Release
+
+# Cuts a release by reading the VERSION file: bump VERSION in a PR, merge,
+# and this workflow verifies, tags v<VERSION>, and publishes a GitHub
+# release with generated notes. Re-tagging is skipped when the tag already
+# exists, so merging without a bump is always safe.
+#
+# Tags are only the published form of a release — Go consumers can also pin
+# any untagged commit or branch directly:
+#
+#   go get github.com/AbdoAnss/go-fantasy-pl@main          # pseudo-version
+#   go get github.com/AbdoAnss/go-fantasy-pl@<commit-sha>
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Verify before tagging
+    if: github.ref == 'refs/heads/main' # manual dispatches are main-only
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Test
+        run: go test -race ./...
+
+  tag:
+    name: Tag and publish VERSION
+    needs: verify
+    if: github.ref == 'refs/heads/main' # manual dispatches are main-only
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write # only the publishing job needs write scope
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # full history so existing tags are visible
+
+      - id: version
+        name: Read VERSION and check for an existing tag
+        run: |
+          ver="$(tr -d '[:space:]' < VERSION)"
+          if ! [[ "$ver" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::VERSION must contain a semver X.Y.Z string, got '$ver'"
+            exit 1
+          fi
+          echo "version=$ver" >> "$GITHUB_OUTPUT"
+          if git rev-parse -q --verify "refs/tags/v$ver" >/dev/null; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "v$ver already tagged, skipping"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Push tag
+        if: steps.version.outputs.exists == 'false'
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "v${RELEASE_VERSION}" -m "go-fantasy-pl v${RELEASE_VERSION}"
+          git push origin "v${RELEASE_VERSION}"
+
+      - name: Publish GitHub release
+        if: steps.version.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          # Idempotency: if the tag landed but release creation failed, a
+          # re-run must still be able to (re)publish the missing release.
+          if gh release view "v${RELEASE_VERSION}" >/dev/null 2>&1; then
+            echo "release v${RELEASE_VERSION} already exists, skipping"
+            exit 0
+          fi
+          gh release create "v${RELEASE_VERSION}" \
+            --title "v${RELEASE_VERSION}" \
+            --generate-notes \
+            --verify-tag
